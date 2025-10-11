@@ -3,10 +3,11 @@
 
 import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { ShieldAlert, Users, Gift, LogIn } from 'lucide-react';
+import { Users, Gift, LogIn } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/icons/logo';
 
 export default function LandingPage() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-volunteers') ?? {
@@ -18,7 +19,7 @@ export default function LandingPage() {
     <div className="flex flex-col min-h-screen">
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background shadow-sm">
         <Link href="/" className="flex items-center justify-center gap-2">
-          <ShieldAlert className="h-6 w-6 text-primary" />
+          <Logo className="h-6 w-6 text-primary" />
           <span className="text-lg font-bold font-headline">ResQ Hub</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
@@ -70,7 +71,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="grid gap-1 text-center">
-                <ShieldAlert className="h-10 w-10 mx-auto text-primary" />
+                <Logo className="h-10 w-10 mx-auto text-primary" />
                 <h3 className="text-lg font-bold font-headline">Gestión de Voluntarios</h3>
                 <p className="text-sm text-muted-foreground">
                   Inscribe y organiza voluntarios eficientemente, asignándolos a los grupos de apoyo donde más se necesitan.
