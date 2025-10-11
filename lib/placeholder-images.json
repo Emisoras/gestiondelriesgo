@@ -1,0 +1,34 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-volunteers",
+      "description": "A group of volunteers working together in a community.",
+      "imageUrl": "https://picsum.photos/seed/hero-volunteers/1920/1080",
+      "imageHint": "volunteers community"
+    },
+    {
+      "id": "affected-people",
+      "description": "A crowd of people receiving aid.",
+      "imageUrl": "https://picsum.photos/seed/affected-people/600/400",
+      "imageHint": "people aid"
+    },
+    {
+      "id": "active-volunteers",
+      "description": "Volunteers organizing supplies.",
+      "imageUrl": "https://picsum.photos/seed/active-volunteers/600/400",
+      "imageHint": "volunteers supplies"
+    },
+    {
+      "id": "donations-received",
+      "description": "Boxes of donated goods.",
+      "imageUrl": "https://picsum.photos/seed/donations-received/600/400",
+      "imageHint": "donation boxes"
+    },
+    {
+      "id": "deliveries-made",
+      "description": "A truck being unloaded with supplies.",
+      "imageUrl": "https://picsum.photos/seed/deliveries-made/600/400",
+      "imageHint": "supply truck"
+    }
+  ]
+}

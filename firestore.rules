@@ -1,0 +1,119 @@
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a role-based access control model, with specific rules for each collection.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile information.
+ * - /damnificados/{damnificadoId}: Stores information about affected individuals/families.
+ * - /voluntarios/{voluntarioId}: Stores information about volunteers.
+ * - /donaciones/{donacionId}: Stores information about donations.
+ * - /entregas/{entregaId}: Stores information about deliveries to affected individuals.
+ *
+ * Key Security Decisions:
+ * - Users can only read and write their own profile data.
+ * - Listing of users is disallowed.
+ * - The 'damnificados', 'voluntarios', 'donaciones', and 'entregas' collections are writable by authenticated users.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Manages user profile data, ensuring users can only access their own profiles.
+     * @path /users/{userId}
+     * @allow (create) - A user can create their own profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) - A user can only get, update or delete their own profile.
+     * @deny (create) - A user cannot create a profile with a userId that does not match their auth.uid.
+     * @deny (get, update, delete) - A user cannot get, update or delete another user's profile.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages information about affected individuals/families.
+     * @path /damnificados/{damnificadoId}
+     * @allow (create) - Any authenticated user can create a damnificado record.
+     * @allow (get, list, update, delete) - Any authenticated user can get, list, update, or delete damnificado records.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Allows any authenticated user to create, read, update, and delete damnificado records.
+     */
+    match /damnificados/{damnificadoId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages information about volunteers.
+     * @path /voluntarios/{voluntarioId}
+     * @allow (create) - Any authenticated user can create a voluntario record.
+     * @allow (get, list, update, delete) - Any authenticated user can get, list, update, or delete voluntario records.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Allows any authenticated user to create, read, update, and delete voluntario records.
+     */
+    match /voluntarios/{voluntarioId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages information about donations.
+     * @path /donaciones/{donacionId}
+     * @allow (create) - Any authenticated user can create a donacion record.
+     * @allow (get, list, update, delete) - Any authenticated user can get, list, update, or delete donacion records.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Allows any authenticated user to create, read, update, and delete donacion records.
+     */
+    match /donaciones/{donacionId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages information about deliveries to affected individuals.
+     * @path /entregas/{entregaId}
+     * @allow (create) - Any authenticated user can create an entrega record.
+     * @allow (get, list, update, delete) - Any authenticated user can get, list, update, or delete entrega records.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Allows any authenticated user to create, read, update, and delete entrega records.
+     */
+    match /entregas/{entregaId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+  }
+}

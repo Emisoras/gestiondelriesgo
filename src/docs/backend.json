@@ -1,0 +1,331 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Authentication."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the user's profile picture."
+        },
+        "role": {
+            "type": "string",
+            "enum": ["administrador", "empleado"],
+            "description": "The user's role in the application."
+        },
+        "estado": {
+            "type": "string",
+            "enum": ["activo", "inactivo", "pendiente"],
+            "description": "The user's status in the application."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of profile creation."
+        }
+      },
+      "required": ["uid", "email", "role", "estado"]
+    },
+    "Damnificado": {
+      "title": "Damnificado",
+      "description": "Representa a una persona o familia afectada por un desastre.",
+      "type": "object",
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "description": "Nombre de la persona."
+        },
+        "apellido": {
+          "type": "string",
+          "description": "Apellido de la persona."
+        },
+        "cedula": {
+          "type": "string",
+          "description": "Cédula de identidad."
+        },
+        "fecha_nacimiento": {
+          "type": "string",
+          "format": "date",
+          "description": "Fecha de nacimiento."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Correo electrónico de contacto."
+        },
+        "telefono": {
+          "type": "string",
+          "description": "Número de teléfono de contacto."
+        },
+        "direccion": {
+          "type": "string",
+          "description": "Dirección completa del domicilio afectado."
+        },
+        "barrio": {
+          "type": "string",
+          "description": "Barrio o sector."
+        },
+        "coordenadas": {
+          "type": "string",
+          "description": "Coordenadas GPS (lat, long)."
+        },
+        "ciudad": {
+          "type": "string",
+          "description": "Ciudad de residencia."
+        },
+        "estado": {
+          "type": "string",
+          "description": "Estado o provincia."
+        },
+        "miembros_familia": {
+          "type": "string",
+          "description": "Descripción del grupo familiar afectado."
+        },
+        "tipo_vivienda": {
+          "type": "string",
+          "enum": ["propia", "alquilada", "familiar", "otro"],
+          "description": "Tipo de tenencia de la vivienda."
+        },
+        "condiciones_vivienda": {
+          "type": "string",
+          "enum": ["leve", "moderado", "grave", "perdida_total"],
+          "description": "Nivel de daño en la vivienda."
+        },
+        "danos_vivienda": {
+          "type": "string",
+          "description": "Descripción detallada de los daños."
+        },
+        "fotos_danos": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "format": "uri"
+            },
+            "description": "URLs de las fotos de los daños."
+        },
+        "necesidades": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Lista de necesidades urgentes."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de creación del registro."
+        }
+      },
+      "required": ["nombre", "apellido", "direccion", "ciudad", "estado", "tipo_vivienda", "condiciones_vivienda", "necesidades"]
+    },
+    "Voluntario": {
+      "title": "Voluntario",
+      "description": "Representa a una persona que se ofrece como voluntaria.",
+      "type": "object",
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "description": "Nombre del voluntario."
+        },
+        "apellido": {
+          "type": "string",
+          "description": "Apellido del voluntario."
+        },
+        "edad": {
+          "type": "number",
+          "description": "Edad del voluntario."
+        },
+        "direccion": {
+          "type": "string",
+          "description": "Dirección del voluntario."
+        },
+        "barrio": {
+            "type": "string",
+            "description": "Barrio o sector del voluntario."
+        },
+        "perfil_profesional": {
+            "type": "string",
+            "description": "Perfil profesional del voluntario."
+        },
+        "organizacion": {
+            "type": "string",
+            "description": "Organización a la que pertenece el voluntario."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Correo electrónico de contacto."
+        },
+        "telefono": {
+          "type": "string",
+          "description": "Número de teléfono de contacto."
+        },
+        "habilidades": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Lista de habilidades o áreas de apoyo."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de creación del registro."
+        }
+      },
+      "required": ["nombre", "apellido", "email", "telefono", "habilidades"]
+    },
+    "Donacion": {
+      "title": "Donacion",
+      "description": "Representa una donación recibida.",
+      "type": "object",
+      "properties": {
+        "donante": {
+          "type": "string",
+          "description": "Nombre del donante o de la organización."
+        },
+        "tipo_persona": {
+          "type": "string",
+          "enum": ["natural", "juridica"],
+          "description": "Tipo de persona que realiza la donación."
+        },
+        "identificacion": {
+          "type": "string",
+          "description": "RIF o Cédula de Identidad del donante."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Correo electrónico de contacto."
+        },
+        "telefono": {
+          "type": "string",
+          "description": "Número de teléfono de contacto."
+        },
+        "direccion": {
+          "type": "string",
+          "description": "Dirección del donante."
+        },
+        "tipo_donacion": {
+          "type": "string",
+          "enum": ["monetaria", "alimentos", "ropa", "medicamentos", "otro"],
+          "description": "Categoría principal de la donación."
+        },
+        "otro_tipo_donacion": {
+            "type": "string",
+            "description": "Especificación si el tipo de donación es 'otro'."
+        },
+        "descripcion": {
+          "type": "string",
+          "description": "Descripción detallada y cantidad de la donación."
+        },
+        "fotos_donacion": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "format": "uri"
+            },
+            "description": "URLs de las fotos de la donación."
+        },
+        "observaciones": {
+            "type": "string",
+            "description": "Observaciones adicionales sobre la donación."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de creación del registro."
+        }
+      },
+      "required": ["donante", "tipo_persona", "identificacion", "tipo_donacion", "descripcion"]
+    },
+    "Entrega": {
+      "title": "Entrega",
+      "description": "Representa una entrega de ayuda a un damnificado.",
+      "type": "object",
+      "properties": {
+        "receptorId": {
+          "type": "string",
+          "description": "ID del documento del damnificado que recibe la ayuda."
+        },
+        "receptorNombre": {
+          "type": "string",
+          "description": "Nombre del damnificado para fácil visualización."
+        },
+        "descripcion_entrega": {
+          "type": "string",
+          "description": "Descripción de los artículos entregados y su cantidad."
+        },
+        "fotos_entrega": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "format": "uri"
+            },
+            "description": "URLs de las fotos de la entrega."
+        },
+        "responsable": {
+          "type": "string",
+          "description": "Nombre del miembro del equipo que realiza la entrega."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de creación del registro."
+        }
+      },
+      "required": ["receptorId", "receptorNombre", "descripcion_entrega", "responsable"]
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Colección de perfiles de usuario."
+    },
+    "/damnificados/{damnificadoId}": {
+      "schema": {
+        "$ref": "#/entities/Damnificado"
+      },
+      "description": "Colección de todos los damnificados registrados en el sistema."
+    },
+    "/voluntarios/{voluntarioId}": {
+        "schema": {
+            "$ref": "#/entities/Voluntario"
+        },
+        "description": "Colección de todos los voluntarios registrados en el sistema."
+    },
+    "/donaciones/{donacionId}": {
+        "schema": {
+            "$ref": "#/entities/Donacion"
+        },
+        "description": "Colección de todas las donaciones recibidas."
+    },
+    "/entregas/{entregaId}": {
+        "schema": {
+            "$ref": "#/entities/Entrega"
+        },
+        "description": "Colección de todas las entregas de ayuda realizadas."
+    }
+  }
+}
