@@ -40,7 +40,7 @@ export function SidebarNav() {
     try {
       await signOut(auth);
       toast({ title: "Sesión cerrada", description: "Has cerrado sesión correctamente." });
-      router.push('/login');
+      // The redirection will be handled by the FirebaseClientProvider
     } catch (error) {
       toast({ title: "Error", description: "No se pudo cerrar la sesión.", variant: "destructive" });
     }

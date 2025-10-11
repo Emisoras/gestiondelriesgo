@@ -17,7 +17,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { ShieldAlert, LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users } from "lucide-react";
+import { LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -26,6 +26,7 @@ import { useUser } from "@/firebase";
 import { auth } from "@/firebase/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { Logo } from "@/components/icons/logo";
 
 
 export function SidebarNav() {
@@ -39,7 +40,7 @@ export function SidebarNav() {
     try {
       await signOut(auth);
       toast({ title: "Sesión cerrada", description: "Has cerrado sesión correctamente." });
-      router.push('/login');
+      // The redirection will be handled by the FirebaseClientProvider
     } catch (error) {
       toast({ title: "Error", description: "No se pudo cerrar la sesión.", variant: "destructive" });
     }
@@ -172,7 +173,7 @@ export function SidebarNav() {
       <div className="flex flex-col h-full">
         <SidebarHeader className="border-b border-sidebar-border">
           <div className="flex items-center gap-2 p-2">
-              <ShieldAlert className="w-8 h-8 text-sidebar-primary" />
+              <Logo className="w-8 h-8 text-sidebar-primary" />
               <span className="text-xl font-semibold text-sidebar-foreground font-headline">ResQ Hub</span>
           </div>
         </SidebarHeader>

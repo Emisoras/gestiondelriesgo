@@ -9,11 +9,14 @@ import { UserContext, type UserProfile } from '@/firebase/auth/use-user';
 import { FirebaseErrorListener } from '@/firebase/firebase-error-listener';
 import { FirestorePermissionError } from './errors';
 import { errorEmitter } from '@/firebase/error-emitter';
+import { usePathname, useRouter } from 'next/navigation';
 
 export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -52,13 +55,17 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
             } else {
                 setUser(null);
                 setUserProfile(null);
+                // If the user is logged out and on a protected route, redirect to login
+                if (pathname.startsWith('/dashboard')) {
+                    router.push('/login');
+                }
             }
             setLoading(false);
         });
 
         // Cleanup subscription on unmount
         return () => unsubscribe();
-    }, []);
+    }, [pathname, router]);
 
 
     return (
