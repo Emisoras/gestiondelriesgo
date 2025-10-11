@@ -21,7 +21,12 @@ import { reauthenticateAndChangePassword } from "@/firebase/user-actions";
 
 const formSchema = z.object({
   currentPassword: z.string().min(1, "Debe ingresar su contraseña actual."),
-  newPassword: z.string().min(6, "La nueva contraseña debe tener al menos 6 caracteres."),
+  newPassword: z.string()
+    .min(8, { message: "La contraseña debe tener al menos 8 caracteres." })
+    .regex(/[A-Z]/, { message: "Debe contener al menos una letra mayúscula." })
+    .regex(/[a-z]/, { message: "Debe contener al menos una letra minúscula." })
+    .regex(/\d/, { message: "Debe contener al menos un número." })
+    .regex(/[^A-Za-z0-9]/, { message: "Debe contener al menos un carácter especial." }),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Las nuevas contraseñas no coinciden.",

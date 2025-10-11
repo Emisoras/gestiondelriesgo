@@ -7,7 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ShieldAlert, LogIn, Loader2 } from "lucide-react";
+import { LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,7 @@ import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, firestore } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import type { UserProfile } from "@/firebase/auth/use-user";
+import { Logo } from "@/components/icons/logo";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor ingrese un correo válido." }),
@@ -109,7 +110,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-4 bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <ShieldAlert className="mx-auto h-12 w-12 text-primary" />
+          <Logo className="mx-auto h-12 w-12 text-primary" />
           <CardTitle className="mt-4 font-headline text-2xl">ResQ Hub</CardTitle>
           <CardDescription>
             Inicie sesión para acceder al panel de gestión de emergencias.

@@ -13,13 +13,18 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState } from "react";
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebase';
 
 const formSchema = z.object({
   displayName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   email: z.string().email({ message: "Por favor ingrese un correo válido." }),
-  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
+  password: z.string()
+    .min(8, { message: "La contraseña debe tener al menos 8 caracteres." })
+    .regex(/[A-Z]/, { message: "Debe contener al menos una letra mayúscula." })
+    .regex(/[a-z]/, { message: "Debe contener al menos una letra minúscula." })
+    .regex(/\d/, { message: "Debe contener al menos un número." })
+    .regex(/[^A-Za-z0-9]/, { message: "Debe contener al menos un carácter especial." }),
 });
 
 export function SignupForm() {
@@ -42,11 +47,16 @@ export function SignupForm() {
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
         await updateProfile(userCredential.user, { displayName: values.displayName });
 
+        // Sign out the user immediately after creation
+        await signOut(auth);
+
         toast({
             title: "¡Registro exitoso!",
-            description: "Tu cuenta ha sido creada. Serás redirigido al dashboard.",
+            description: "Tu cuenta ha sido creada y está pendiente de aprobación.",
+            duration: 5000,
         });
-        router.push('/dashboard');
+        router.push('/login');
+
     } catch (error: any) {
         console.error("Firebase sign-up error", error);
         toast({
