@@ -27,57 +27,65 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Loader2, Trash2, Pencil } from "lucide-react";
+import { Loader2, MoreHorizontal, Trash2, Pencil, FileDown } from "lucide-react";
 import { format } from 'date-fns';
 import { useCollection, useUser } from "@/firebase";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { deleteDonacion } from "@/firebase/donacion-actions";
+import { deleteVisita } from "@/firebase/visita-actions";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { exportVisitaToPDF } from "@/lib/pdf-generator-visita";
+import type { VisitaTecnica } from "./visita-form";
 
-type Donacion = {
-    id: string;
-    donante: string;
-    tipo_donacion: string;
-    descripcion: string;
-    createdAt: {
-        seconds: number;
-        nanoseconds: number;
-    } | null;
-};
 
-export function DonacionesTable() {
-  const { data: donaciones, loading, forceRefetch } = useCollection<Donacion>('donaciones', { orderBy: ['createdAt', 'desc'] });
+export function VisitasTable() {
+  const { data: visitas, loading, forceRefetch } = useCollection<VisitaTecnica>('visitas', { orderBy: ['fechaVisita', 'desc']});
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [selectedDonacion, setSelectedDonacion] = useState<Donacion | null>(null);
+  const [selectedVisita, setSelectedVisita] = useState<VisitaTecnica | null>(null);
   const { toast } = useToast();
   const router = useRouter();
   const { userProfile } = useUser();
 
-  const formatDate = (timestamp: Donacion['createdAt']) => {
+  const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
     const date = new Date(timestamp.seconds * 1000);
     return format(date, 'yyyy-MM-dd');
   }
 
-  const handleDeleteClick = (donacion: Donacion) => {
-    setSelectedDonacion(donacion);
+  const handleDeleteClick = (visita: VisitaTecnica) => {
+    setSelectedVisita(visita);
     setIsAlertOpen(true);
   };
   
-  const handleEditClick = (donacionId: string) => {
-    router.push(`/dashboard/donaciones/editar/${donacionId}`);
+  const handleEditClick = (visitaId: string) => {
+    router.push(`/dashboard/visitas/editar/${visitaId}`);
+  };
+
+  const handleExportClick = (visita: VisitaTecnica) => {
+    try {
+        exportVisitaToPDF(visita, userProfile);
+        toast({
+            title: "Exportación Exitosa",
+            description: `Se ha generado el PDF para el acta ${visita.actaNumero}.`
+        })
+    } catch(error) {
+        console.error("Error al exportar a PDF: ", error);
+        toast({
+            title: "Error de Exportación",
+            description: "No se pudo generar el archivo PDF.",
+            variant: "destructive"
+        })
+    }
   };
 
   const handleDeleteConfirm = async () => {
-    if (selectedDonacion) {
+    if (selectedVisita) {
         try {
-            await deleteDonacion(selectedDonacion.id);
+            await deleteVisita(selectedVisita.id!);
             toast({
               title: "Registro Eliminado",
-              description: "La donación ha sido eliminada correctamente.",
+              description: "El acta de visita ha sido eliminada correctamente.",
             });
             forceRefetch();
         } catch(error) {
@@ -89,18 +97,19 @@ export function DonacionesTable() {
         }
     }
     setIsAlertOpen(false);
-    setSelectedDonacion(null);
+    setSelectedVisita(null);
   };
+
 
   return (
     <>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Donante</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Cantidad/Descripción</TableHead>
-            <TableHead>Fecha</TableHead>
+            <TableHead>Nro. Acta</TableHead>
+            <TableHead>Damnificado</TableHead>
+            <TableHead>Responsable</TableHead>
+            <TableHead>Fecha de Visita</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
@@ -110,30 +119,17 @@ export function DonacionesTable() {
               <TableCell colSpan={5} className="h-24 text-center">
                 <div className="flex justify-center items-center">
                   <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                  Cargando donaciones...
+                  Cargando visitas...
                 </div>
               </TableCell>
             </TableRow>
-          ) : donaciones && donaciones.length > 0 ? (
-            donaciones.map((donacion) => (
-              <TableRow key={donacion.id}>
-                <TableCell className="font-medium">{donacion.donante}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      donacion.tipo_donacion === "monetaria"
-                        ? "default"
-                        : donacion.tipo_donacion === "medicamentos"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                    className="capitalize"
-                  >
-                    {donacion.tipo_donacion.replace(/_/g, " ")}
-                  </Badge>
-                </TableCell>
-                <TableCell>{donacion.descripcion}</TableCell>
-                <TableCell>{formatDate(donacion.createdAt)}</TableCell>
+          ) : visitas && visitas.length > 0 ? (
+            visitas.map((visita) => (
+              <TableRow key={visita.id}>
+                <TableCell className="font-medium">{visita.actaNumero}</TableCell>
+                <TableCell>{visita.nombreDamnificado} {visita.apellidoDamnificado}</TableCell>
+                <TableCell>{visita.profesionalAsignado}</TableCell>
+                <TableCell>{formatDate(visita.fechaVisita)}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -145,14 +141,18 @@ export function DonacionesTable() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => handleEditClick(donacion.id)}>
+                         <DropdownMenuItem onSelect={() => handleEditClick(visita.id!)}>
                           <Pencil className="mr-2 h-4 w-4" />
                           <span>Editar</span>
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onSelect={() => handleExportClick(visita)}>
+                          <FileDown className="mr-2 h-4 w-4" />
+                          <span>Exportar PDF</span>
                         </DropdownMenuItem>
                         {userProfile?.role === 'administrador' && (
                           <DropdownMenuItem 
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                              onSelect={() => handleDeleteClick(donacion)}
+                              onSelect={() => handleDeleteClick(visita)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             <span>Eliminar</span>
@@ -166,19 +166,19 @@ export function DonacionesTable() {
           ) : (
             <TableRow>
               <TableCell colSpan={5} className="h-24 text-center">
-                No se encontraron donaciones.
+                No se encontraron visitas técnicas.
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
-       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                 <AlertDialogTitle>¿Estás seguro de que quieres eliminar este registro?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Esto eliminará permanentemente la donación de
-                    {selectedDonacion && ` ${selectedDonacion.donante}`}.
+                    Esta acción no se puede deshacer. Esto eliminará permanentemente el acta de visita
+                    {selectedVisita && ` ${selectedVisita.actaNumero}`}.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -192,5 +192,3 @@ export function DonacionesTable() {
     </>
   );
 }
-
-    

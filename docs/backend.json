@@ -29,13 +29,18 @@
             "enum": ["administrador", "empleado"],
             "description": "The user's role in the application."
         },
+        "estado": {
+            "type": "string",
+            "enum": ["activo", "inactivo", "pendiente"],
+            "description": "The user's status in the application."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "Timestamp of profile creation."
         }
       },
-      "required": ["uid", "email", "role"]
+      "required": ["uid", "email", "role", "estado"]
     },
     "Damnificado": {
       "title": "Damnificado",
@@ -155,6 +160,10 @@
           "type": "string",
           "description": "Apellido del voluntario."
         },
+        "documento_identidad": {
+            "type": "string",
+            "description": "Documento de identidad del voluntario."
+        },
         "edad": {
           "type": "number",
           "description": "Edad del voluntario."
@@ -232,7 +241,7 @@
         },
         "tipo_donacion": {
           "type": "string",
-          "enum": ["monetaria", "alimentos", "ropa", "medicamentos", "otro"],
+          "enum": ["monetaria", "alimentos", "ropa_calzado", "medicamentos", "utiles_aseo", "utiles_cocina", "fresadas", "otro"],
           "description": "Categoría principal de la donación."
         },
         "otro_tipo_donacion": {
@@ -276,6 +285,11 @@
           "type": "string",
           "description": "Nombre del damnificado para fácil visualización."
         },
+        "fecha_entrega": {
+          "type": "string",
+          "format": "date",
+          "description": "Fecha en que se realiza la entrega."
+        },
         "descripcion_entrega": {
           "type": "string",
           "description": "Descripción de los artículos entregados y su cantidad."
@@ -292,13 +306,50 @@
           "type": "string",
           "description": "Nombre del miembro del equipo que realiza la entrega."
         },
+        "firmaReceptor": {
+          "type": "string",
+          "format": "uri",
+          "description": "Firma del receptor como imagen Data URL."
+        },
+        "huellaReceptor": {
+          "type": "string",
+          "format": "uri",
+          "description": "Huella dactilar del receptor como imagen Data URL."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "Timestamp de creación del registro."
         }
       },
-      "required": ["receptorId", "receptorNombre", "descripcion_entrega", "responsable"]
+      "required": ["receptorId", "receptorNombre", "fecha_entrega", "descripcion_entrega", "responsable"]
+    },
+    "VisitaTecnica": {
+      "title": "Visita Tecnica",
+      "description": "Representa una visita técnica o de emergencia a un damnificado.",
+      "type": "object",
+      "properties": {
+        "actaNumero": { "type": "string" },
+        "damnificadoId": { "type": "string" },
+        "nombreDamnificado": { "type": "string" },
+        "apellidoDamnificado": { "type": "string" },
+        "cedulaDamnificado": { "type": "string" },
+        "telefonoDamnificado": { "type": "string" },
+        "direccion": { "type": "string" },
+        "barrio": { "type": "string" },
+        "ubicacionTipo": { "type": "string", "enum": ["urbano", "rural"] },
+        "tipoEscenario": { "type": "string" },
+        "condicionVivienda": { "type": "string" },
+        "fichaEdan": { "type": "string", "enum": ["si", "no", "na"] },
+        "tipoEvento": { "type": "array", "items": { "type": "string" } },
+        "otro_tipo_evento": { "type": "string" },
+        "descripcionRequerimiento": { "type": "string" },
+        "profesionalAsignado": { "type": "string" },
+        "fechaVisita": { "type": "string", "format": "date-time" },
+        "registroFotografico": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "firmaProfesional": { "type": "string", "format": "uri" }
+      },
+      "required": ["actaNumero", "damnificadoId", "profesionalAsignado", "fechaVisita", "tipoEvento", "descripcionRequerimiento"]
     }
   },
   "auth": {
@@ -334,9 +385,12 @@
             "$ref": "#/entities/Entrega"
         },
         "description": "Colección de todas las entregas de ayuda realizadas."
+    },
+    "/visitas/{visitaId}": {
+        "schema": {
+            "$ref": "#/entities/VisitaTecnica"
+        },
+        "description": "Colección de todas las visitas técnicas y de emergencia."
     }
   }
 }
-    
-
-    

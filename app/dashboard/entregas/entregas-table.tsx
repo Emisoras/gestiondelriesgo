@@ -42,6 +42,10 @@ type Entrega = {
     receptorNombre: string;
     descripcion_entrega: string;
     responsable: string;
+    fecha_entrega: {
+        seconds: number;
+        nanoseconds: number;
+    } | null;
     createdAt: {
         seconds: number;
         nanoseconds: number;
@@ -58,7 +62,7 @@ export function EntregasTable() {
   const router = useRouter();
   const { userProfile } = useUser();
 
-  const formatDate = (timestamp: Entrega['createdAt']) => {
+  const formatDate = (timestamp: Entrega['fecha_entrega']) => {
     if (!timestamp) return 'N/A';
     const date = new Date(timestamp.seconds * 1000);
     return format(date, 'yyyy-MM-dd');
@@ -120,7 +124,7 @@ export function EntregasTable() {
             <TableHead>Receptor</TableHead>
             <TableHead>Artículos Entregados</TableHead>
             <TableHead>Responsable</TableHead>
-            <TableHead>Fecha</TableHead>
+            <TableHead>Fecha de Entrega</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
@@ -140,7 +144,7 @@ export function EntregasTable() {
                 <TableCell className="font-medium">{entrega.receptorNombre}</TableCell>
                 <TableCell>{entrega.descripcion_entrega}</TableCell>
                 <TableCell>{entrega.responsable}</TableCell>
-                <TableCell>{formatDate(entrega.createdAt)}</TableCell>
+                <TableCell>{formatDate(entrega.fecha_entrega)}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

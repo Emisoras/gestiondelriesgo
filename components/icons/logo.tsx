@@ -1,8 +1,9 @@
+
 import Image from 'next/image';
 import type { SVGProps } from 'react';
 
 export function Logo(props: SVGProps<SVGSVGElement> & { width?: number; height?: number }) {
-  const { width = 48, height = 48, ...rest } = props;
+  const { width = 74, height = 74, ...rest } = props;
   return (
     <Image
       src="/logo.png"

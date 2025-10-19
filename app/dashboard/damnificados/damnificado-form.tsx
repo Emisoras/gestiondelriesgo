@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +31,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
-import { UtensilsCrossed, Droplets, Home, Stethoscope, Shirt, CalendarIcon, Wrench, Camera, Trash2, Loader2 } from "lucide-react";
+import { UtensilsCrossed, Droplets, Home, Stethoscope, Shirt, CalendarIcon, Wrench, Camera, Trash2, Loader2, CookingPot, SprayCan, Lamp } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -49,12 +50,18 @@ const needsItems = [
   { id: "atencion_medica", label: "Atención Médica", icon: Stethoscope },
   { id: "ropa", label: "Ropa y Abrigo", icon: Shirt },
   { id: "reconstruccion", label: "Ayuda para Reconstrucción", icon: Wrench },
+  { id: "kit_cocina", label: "Kit de Cocina", icon: CookingPot },
+  { id: "kit_aseo", label: "Kit de Aseo", icon: SprayCan },
+  { id: "kit_hogar", label: "Kit de Hogar", icon: Lamp },
 ] as const;
 
 const formSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   apellido: z.string().min(2, "El apellido debe tener al menos 2 caracteres."),
   cedula: z.string().optional(),
+  nacionalidad: z.string().optional(),
+  edad: z.coerce.number().positive("La edad debe ser un número positivo.").optional().or(z.literal("")),
+  genero: z.enum(["masculino", "femenino", "otro", ""]).optional(),
   fecha_nacimiento: z.date().optional(),
   email: z.string().email("Debe ser un correo electrónico válido.").optional().or(z.literal("")),
   telefono: z.string().optional(),
@@ -81,6 +88,9 @@ const parseInitialValues = (initialValues: any) => {
             nombre: "",
             apellido: "",
             cedula: "",
+            nacionalidad: "",
+            edad: "",
+            genero: "",
             email: "",
             telefono: "",
             direccion: "",
@@ -226,7 +236,7 @@ export function DamnificadoForm({ damnificadoId, initialValues }: DamnificadoFor
                   )}
                 />
               </div>
-              <div className="grid md:grid-cols-2 gap-4">
+               <div className="grid md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="cedula"
@@ -236,6 +246,56 @@ export function DamnificadoForm({ damnificadoId, initialValues }: DamnificadoFor
                       <FormControl>
                         <Input placeholder="12.345.678" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="nacionalidad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nacionalidad</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Colombiana" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="edad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Edad</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="30" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="genero"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Género</FormLabel>
+                       <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="masculino">Masculino</SelectItem>
+                          <SelectItem value="femenino">Femenino</SelectItem>
+                          <SelectItem value="otro">Otro</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -571,3 +631,7 @@ export function DamnificadoForm({ damnificadoId, initialValues }: DamnificadoFor
     </Form>
   );
 }
+
+    
+
+    

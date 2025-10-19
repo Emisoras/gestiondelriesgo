@@ -54,10 +54,19 @@ export function VoluntariosTable() {
   const { userProfile } = useUser();
 
   const filteredVoluntarios = voluntarios?.filter(
-    (voluntario) =>
-      voluntario.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voluntario.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voluntario.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (voluntario) => {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      const searchInHabilidades = voluntario.habilidades?.some(habilidad => 
+        habilidad.replace(/_/g, ' ').toLowerCase().includes(lowerCaseSearchTerm)
+      );
+
+      return (
+        voluntario.nombre.toLowerCase().includes(lowerCaseSearchTerm) ||
+        voluntario.apellido.toLowerCase().includes(lowerCaseSearchTerm) ||
+        voluntario.email.toLowerCase().includes(lowerCaseSearchTerm) ||
+        searchInHabilidades
+      );
+    }
   );
 
   const handleDeleteClick = (voluntario: Voluntario) => {
@@ -92,7 +101,7 @@ export function VoluntariosTable() {
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Buscar por nombre, apellido o email..."
+          placeholder="Buscar por nombre, email o habilidad..."
           className="pl-8 w-full"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}

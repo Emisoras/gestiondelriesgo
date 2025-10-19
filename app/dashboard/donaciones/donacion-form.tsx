@@ -46,7 +46,7 @@ const formSchema = z.object({
   email: z.string().email("Debe ser un correo electrónico válido.").optional().or(z.literal("")),
   telefono: z.string().optional(),
   direccion: z.string().optional(),
-  tipo_donacion: z.enum(["monetaria", "alimentos", "ropa", "medicamentos", "otro"]),
+  tipo_donacion: z.enum(["monetaria", "alimentos", "ropa_calzado", "medicamentos", "utiles_aseo", "utiles_cocina", "fresadas", "otro"]),
   otro_tipo_donacion: z.string().optional(),
   descripcion: z.string().min(2, "La descripción es requerida."),
   fotos_donacion: z.array(z.string()).optional(),
@@ -257,8 +257,11 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
                 <SelectContent>
                   <SelectItem value="monetaria">Monetaria</SelectItem>
                   <SelectItem value="alimentos">Alimentos</SelectItem>
-                  <SelectItem value="ropa">Ropa y Abrigo</SelectItem>
+                  <SelectItem value="ropa_calzado">Ropa y Calzado</SelectItem>
                   <SelectItem value="medicamentos">Medicamentos</SelectItem>
+                  <SelectItem value="utiles_aseo">Útiles de Aseo</SelectItem>
+                  <SelectItem value="utiles_cocina">Útiles de Cocina</SelectItem>
+                  <SelectItem value="fresadas">Fresadas</SelectItem>
                   <SelectItem value="otro">Otro</SelectItem>
                 </SelectContent>
               </Select>
