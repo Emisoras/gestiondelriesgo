@@ -1,0 +1,22 @@
+
+{
+    "name": "ResQ Hub",
+    "short_name": "ResQ Hub",
+    "description": "Gestión de emergencias y ayuda humanitaria.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f0f4f8",
+    "theme_color": "#2563eb",
+    "icons": [
+        {
+            "src": "/logo.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/logo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
