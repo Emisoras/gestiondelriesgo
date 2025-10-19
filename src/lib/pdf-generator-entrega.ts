@@ -9,8 +9,11 @@ type Entrega = {
     receptorNombre: string;
     descripcion_entrega: string;
     responsable: string;
+    fecha_entrega: any;
     createdAt: any;
     fotos_entrega?: string[];
+    firmaReceptor?: string;
+    huellaReceptor?: string;
     [key: string]: any;
 };
 
@@ -36,7 +39,7 @@ export const exportEntregaToPDF = async (entrega: Entrega) => {
     bodyData.push(
         [{ content: 'Información de la Entrega', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }],
         ['Receptor', entrega.receptorNombre || 'No registrado'],
-        ['Fecha de Entrega', entrega.createdAt && entrega.createdAt.seconds ? format(new Date(entrega.createdAt.seconds * 1000), 'dd/MM/yyyy HH:mm') : 'No registrada'],
+        ['Fecha de Entrega', entrega.fecha_entrega && entrega.fecha_entrega.seconds ? format(new Date(entrega.fecha_entrega.seconds * 1000), 'dd/MM/yyyy') : 'No registrada'],
         ['Responsable de la Entrega', entrega.responsable || 'No registrado'],
         ['Artículos Entregados', entrega.descripcion_entrega || 'Sin descripción']
     );
@@ -56,16 +59,59 @@ export const exportEntregaToPDF = async (entrega: Entrega) => {
     });
 
     let finalY = (doc as any).lastAutoTable.finalY || 100;
-
-    // Signature section
+    
+    // --- Signature and Fingerprint ---
+    const signatureHeight = 40;
+    const signatureWidth = 80;
+    const fingerprintHeight = 40;
+    const fingerprintWidth = 40;
+    
     doc.setFontSize(10);
-    doc.text("Firma del Receptor:", 14, finalY + 20);
-    doc.line(14, finalY + 40, 84, finalY + 40); // Signature line
-    doc.text("C.I:", 14, finalY + 45);
+    doc.text("Recibido por:", 14, finalY + 15);
+    
+    if (entrega.firmaReceptor) {
+        try {
+            const imgProps = doc.getImageProperties(entrega.firmaReceptor);
+            const ratio = imgProps.width / imgProps.height;
+            const h = signatureWidth / ratio;
+            doc.addImage(entrega.firmaReceptor, 'PNG', 14, finalY + 20, signatureWidth, Math.min(h, signatureHeight));
+        } catch (e) {
+            doc.text("Error al cargar firma", 14, finalY + 25);
+        }
+    }
+    doc.line(14, finalY + 20 + signatureHeight, 14 + signatureWidth, finalY + 20 + signatureHeight);
+    doc.text(entrega.receptorNombre || '', 14, finalY + 25 + signatureHeight);
+    doc.text("C.I:", 14, finalY + 30 + signatureHeight);
 
-    doc.text("Firma del Responsable:", pageWidth / 2 + 10, finalY + 20);
-    doc.line(pageWidth / 2 + 10, finalY + 40, pageWidth - 14, finalY + 40); // Signature line
-    doc.text("C.I:", pageWidth / 2 + 10, finalY + 45);
+
+    const rightColumnX = pageWidth / 2 + 10;
+    doc.text("Huella:", rightColumnX, finalY + 15);
+    doc.rect(rightColumnX, finalY + 20, fingerprintWidth, fingerprintHeight); // Fingerprint box
+    if (entrega.huellaReceptor) {
+        try {
+            const imgProps = doc.getImageProperties(entrega.huellaReceptor);
+            const ratio = imgProps.width / imgProps.height;
+            let w = fingerprintWidth - 4;
+            let h = w / ratio;
+            if (h > fingerprintHeight - 4) {
+                h = fingerprintHeight - 4;
+                w = h * ratio;
+            }
+            const x_pos = rightColumnX + (fingerprintWidth - w) / 2;
+            const y_pos = finalY + 20 + (fingerprintHeight - h) / 2;
+            doc.addImage(entrega.huellaReceptor, imgProps.fileType, x_pos, y_pos, w, h);
+        } catch(e) {
+             doc.text("Error huella", rightColumnX + 2, finalY + 25);
+        }
+    }
+
+    const signatureY = finalY + 20 + signatureHeight + 20;
+
+    doc.text("Entregado por:", 14, signatureY);
+    doc.line(14, signatureY + 20, 84, signatureY + 20); // Signature line
+    doc.text(entrega.responsable || '', 14, signatureY + 25);
+    doc.text("C.I:", 14, signatureY + 30);
+
 
     // --- Photos ---
     if (entrega.fotos_entrega && entrega.fotos_entrega.length > 0) {

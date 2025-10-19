@@ -29,18 +29,13 @@
             "enum": ["administrador", "empleado"],
             "description": "The user's role in the application."
         },
-        "estado": {
-            "type": "string",
-            "enum": ["activo", "inactivo", "pendiente"],
-            "description": "The user's status in the application."
-        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "Timestamp of profile creation."
         }
       },
-      "required": ["uid", "email", "role", "estado"]
+      "required": ["uid", "email", "role"]
     },
     "Damnificado": {
       "title": "Damnificado",
@@ -58,6 +53,19 @@
         "cedula": {
           "type": "string",
           "description": "Cédula de identidad."
+        },
+        "nacionalidad": {
+            "type": "string",
+            "description": "Nacionalidad de la persona."
+        },
+        "edad": {
+            "type": "number",
+            "description": "Edad de la persona."
+        },
+        "genero": {
+            "type": "string",
+            "enum": ["masculino", "femenino", "otro"],
+            "description": "Género de la persona."
         },
         "fecha_nacimiento": {
           "type": "string",
@@ -329,3 +337,6 @@
     }
   }
 }
+    
+
+    

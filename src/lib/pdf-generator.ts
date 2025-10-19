@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
@@ -10,6 +9,9 @@ type Damnificado = {
     nombre: string;
     apellido: string;
     cedula?: string;
+    nacionalidad?: string;
+    edad?: number;
+    genero?: string;
     fecha_nacimiento?: any;
     email?: string;
     telefono?: string;
@@ -51,6 +53,9 @@ export const exportDamnificadoToPDF = async (damnificado: Damnificado) => {
         [{ content: 'Información Personal', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }],
         ['Nombre Completo', `${damnificado.nombre || ''} ${damnificado.apellido || ''}`.trim()],
         ['Cédula', damnificado.cedula || 'No registrado'],
+        ['Nacionalidad', damnificado.nacionalidad || 'No registrada'],
+        ['Edad', damnificado.edad?.toString() || 'No registrada'],
+        ['Género', capitalize(damnificado.genero) || 'No registrado'],
         ['Fecha de Nacimiento', damnificado.fecha_nacimiento && damnificado.fecha_nacimiento.seconds ? format(new Date(damnificado.fecha_nacimiento.seconds * 1000), 'dd/MM/yyyy', { locale: es }) : 'No registrada'],
         ['Email', damnificado.email || 'No registrado'],
         ['Teléfono', damnificado.telefono || 'No registrado']
@@ -146,3 +151,7 @@ export const exportDamnificadoToPDF = async (damnificado: Damnificado) => {
     // --- Save the PDF ---
     doc.save(`damnificado_${damnificado.nombre}_${damnificado.apellido}.pdf`);
 };
+
+    
+
+    

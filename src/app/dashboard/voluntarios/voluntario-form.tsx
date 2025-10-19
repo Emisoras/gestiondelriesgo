@@ -28,11 +28,23 @@ const skills = [
   { id: "infraestructura", label: "Ingeniería / Infraestructura" },
   { id: "educacion", label: "Educación y Recreación" },
   { id: "religioso", label: "Apoyo Religioso" },
+  { id: "manipulacion_alimentos", label: "Manipulación de Alimentos" },
+  { id: "comunicaciones", label: "Comunicaciones" },
+  { id: "saneamiento_basico", label: "Saneamiento Básico" },
+  { id: "seguridad", label: "Seguridad" },
+  { id: "alojamiento", label: "Suministro Alojamiento" },
+  { id: "transporte", label: "Transporte" },
+  { id: "adecuaciones_locativas", label: "Adecuaciones Locativas" },
+  { id: "apoyo_administrativo", label: "Apoyo Administrativo" },
 ];
 
 const formSchema = z.object({
+  autorizacion_datos: z.literal(true, {
+    errorMap: () => ({ message: "Debe aceptar la autorización de datos para continuar." }),
+  }),
   nombre: z.string().min(2, "El nombre es requerido."),
   apellido: z.string().min(2, "El apellido es requerido."),
+  documento_identidad: z.string().optional(),
   edad: z.coerce.number().positive("La edad debe ser un número positivo.").optional().or(z.literal("")),
   direccion: z.string().optional(),
   barrio: z.string().optional(),
@@ -52,8 +64,10 @@ export function VoluntarioForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      autorizacion_datos: false,
       nombre: "",
       apellido: "",
+      documento_identidad: "",
       email: "",
       telefono: "",
       habilidades: [],
@@ -90,6 +104,31 @@ export function VoluntarioForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+
+        <FormField
+          control={form.control}
+          name="autorizacion_datos"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>
+                  Autorización de Datos Personales
+                </FormLabel>
+                <FormDescription>
+                  Autorizo el tratamiento de mis datos personales de acuerdo con la Ley 1581 de 2012 y las políticas de privacidad de la organización.
+                </FormDescription>
+                 <FormMessage />
+              </div>
+            </FormItem>
+          )}
+        />
+        
         <div className="space-y-4">
             <h3 className="text-lg font-medium font-headline">Información Personal</h3>
             <div className="grid md:grid-cols-2 gap-4">
@@ -122,6 +161,19 @@ export function VoluntarioForm() {
             </div>
             <div className="grid md:grid-cols-2 gap-4">
                  <FormField
+                    control={form.control}
+                    name="documento_identidad"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Documento de Identidad</FormLabel>
+                        <FormControl>
+                            <Input placeholder="123456789" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                 <FormField
                   control={form.control}
                   name="edad"
                   render={({ field }) => (
@@ -134,20 +186,20 @@ export function VoluntarioForm() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="perfil_profesional"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Perfil Profesional</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: Médico, Ingeniero, Estudiante" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
             </div>
+            <FormField
+              control={form.control}
+              name="perfil_profesional"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Perfil Profesional</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: Médico, Ingeniero, Estudiante" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="direccion"

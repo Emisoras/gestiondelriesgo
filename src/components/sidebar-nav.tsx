@@ -17,7 +17,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users } from "lucide-react";
+import { LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users, Siren } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -83,6 +83,15 @@ export function SidebarNav() {
       subItems: [
         { href: "/dashboard/entregas/registro", label: "Registrar" },
         { href: "/dashboard/entregas/listado", label: "Listado" },
+      ]
+    },
+    { 
+      href: "/dashboard/visitas", 
+      icon: Siren, 
+      label: "Visitas Técnicas",
+      subItems: [
+        { href: "/dashboard/visitas/registro", label: "Registrar" },
+        { href: "/dashboard/visitas/listado", label: "Listado" },
       ]
     },
     { href: "/dashboard/perfil", icon: User, label: "Mi Perfil" },
@@ -173,7 +182,7 @@ export function SidebarNav() {
       <div className="flex flex-col h-full">
         <SidebarHeader className="border-b border-sidebar-border">
           <div className="flex items-center gap-2 p-2">
-              <Logo className="w-8 h-8 text-sidebar-primary" />
+              <Logo className="w-14 h-14 text-sidebar-primary" />
               <span className="text-xl font-semibold text-sidebar-foreground font-headline">ResQ Hub</span>
           </div>
         </SidebarHeader>
