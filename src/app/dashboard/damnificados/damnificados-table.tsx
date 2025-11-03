@@ -73,9 +73,9 @@ export function DamnificadosTable() {
     router.push(`/dashboard/damnificados/editar/${damnificadoId}`);
   };
 
-  const handleExportClick = (damnificado: Damnificado) => {
+  const handleExportClick = async (damnificado: Damnificado) => {
     try {
-        exportDamnificadoToPDF(damnificado);
+        await exportDamnificadoToPDF(damnificado);
         toast({
             title: "Exportación Exitosa",
             description: `Se ha generado el PDF para ${damnificado.nombre} ${damnificado.apellido}.`

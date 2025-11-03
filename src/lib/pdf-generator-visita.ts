@@ -1,10 +1,10 @@
-
 // @ts-nocheck
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { UserProfile } from "@/firebase/auth/use-user";
+import { drawHeader } from './pdf-header-config';
 
 type VisitaTecnica = {
     id?: string;
@@ -38,15 +38,14 @@ export const exportVisitaToPDF = async (visita: VisitaTecnica, userProfile: User
     const margin = 14;
 
     // --- Header ---
+    await drawHeader(doc);
+    
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text("ACTA DE VISITA TÉCNICA / EMERGENCIA", pageWidth / 2, 22, { align: "center" });
+    doc.text("ACTA DE VISITA TÉCNICA / EMERGENCIA", pageWidth / 2, 48, { align: "center" });
     
     doc.setFontSize(12);
-    doc.text(`Acta Nro: ${visita.actaNumero}`, pageWidth / 2, 29, { align: "center" });
-    
-    doc.setDrawColor(200);
-    doc.line(margin, 35, pageWidth - margin, 35);
+    doc.text(`Acta Nro: ${visita.actaNumero}`, pageWidth / 2, 55, { align: "center" });
 
     // --- Body ---
     const personalInfo = [
@@ -56,7 +55,7 @@ export const exportVisitaToPDF = async (visita: VisitaTecnica, userProfile: User
     ];
 
     autoTable(doc, {
-        startY: 40,
+        startY: 60,
         body: personalInfo,
         theme: 'plain',
         styles: { fontSize: 9, cellPadding: 1.5 },
@@ -91,8 +90,7 @@ export const exportVisitaToPDF = async (visita: VisitaTecnica, userProfile: User
     const eventInfo = [
         [{ content: 'Información del Evento', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }],
         ['Tipo de Evento:', evento],
-        [{ content: 'Descripción del Requerimiento / Observaciones', styles: { fontStyle: 'bold' } }],
-        [visita.descripcionRequerimiento],
+        ['Descripción del Requerimiento / Observaciones:', visita.descripcionRequerimiento]
     ];
 
     autoTable(doc, {
@@ -101,7 +99,7 @@ export const exportVisitaToPDF = async (visita: VisitaTecnica, userProfile: User
         theme: 'grid',
         styles: { fontSize: 9, cellPadding: 2 },
          columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 40 },
+            0: { cellWidth: 60, fontStyle: 'bold' },
         }
     });
     
@@ -141,11 +139,12 @@ export const exportVisitaToPDF = async (visita: VisitaTecnica, userProfile: User
     // --- Photos ---
     if (visita.registroFotografico && visita.registroFotografico.length > 0) {
         doc.addPage();
+        await drawHeader(doc);
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("Registro Fotográfico", margin, 22);
+        doc.text("Registro Fotográfico", margin, 48);
         
-        let y = 30;
+        let y = 55;
         const imgWidth = (pageWidth - 3 * margin) / 2;
         
         for (let i = 0; i < visita.registroFotografico.length; i++) {
@@ -159,10 +158,11 @@ export const exportVisitaToPDF = async (visita: VisitaTecnica, userProfile: User
 
                     if (y + imgHeight > doc.internal.pageSize.getHeight() - margin) {
                         doc.addPage();
+                        await drawHeader(doc);
                         doc.setFontSize(14);
                         doc.setFont("helvetica", "bold");
-                        doc.text("Registro Fotográfico (Continuación)", margin, 22);
-                        y = 30;
+                        doc.text("Registro Fotográfico (Continuación)", margin, 48);
+                        y = 55;
                     }
 
                     doc.addImage(base64Img, imgProps.fileType, x, y, imgWidth, imgHeight);

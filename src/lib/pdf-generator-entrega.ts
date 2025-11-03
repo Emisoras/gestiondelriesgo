@@ -1,8 +1,8 @@
-
 // @ts-nocheck
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import { drawHeader } from './pdf-header-config';
 
 type Entrega = {
     id: string;
@@ -20,18 +20,18 @@ type Entrega = {
 export const exportEntregaToPDF = async (entrega: Entrega) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
 
     // --- Header ---
+    await drawHeader(doc);
+    
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("Constancia de Entrega de Ayuda", 14, 22);
+    doc.setFontSize(16);
+    doc.text("Constancia de Entrega de Ayuda", pageWidth / 2, 48, { align: "center" });
+
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 28);
-    doc.setFont("helvetica", "bold");
-    doc.text("ResQ Hub", pageWidth - 14, 22, { align: "right" });
-    doc.setDrawColor(200);
-    doc.line(14, 32, pageWidth - 14, 32);
+    doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 55);
 
     const bodyData = [];
 
@@ -45,7 +45,7 @@ export const exportEntregaToPDF = async (entrega: Entrega) => {
     );
 
     autoTable(doc, {
-        startY: 35,
+        startY: 60,
         body: bodyData,
         theme: 'grid',
         styles: {
@@ -116,12 +116,12 @@ export const exportEntregaToPDF = async (entrega: Entrega) => {
     // --- Photos ---
     if (entrega.fotos_entrega && entrega.fotos_entrega.length > 0) {
         doc.addPage();
+        await drawHeader(doc);
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("Constancia Fotográfica de la Entrega", 14, 22);
+        doc.text("Constancia Fotográfica de la Entrega", margin, 48);
         
-        let y = 30;
-        const margin = 14;
+        let y = 55;
         const imgWidth = (pageWidth - 3 * margin) / 2; // Two images per row
         
         for (let i = 0; i < entrega.fotos_entrega.length; i++) {
@@ -135,10 +135,11 @@ export const exportEntregaToPDF = async (entrega: Entrega) => {
 
                     if (y + imgHeight > doc.internal.pageSize.getHeight() - margin) {
                         doc.addPage();
+                        await drawHeader(doc);
                         doc.setFontSize(14);
                         doc.setFont("helvetica", "bold");
-                        doc.text("Constancia Fotográfica (Continuación)", 14, 22);
-                        y = 30;
+                        doc.text("Constancia Fotográfica (Continuación)", margin, 48);
+                        y = 55;
                     }
 
                     doc.addImage(base64Img, imgProps.fileType, x, y, imgWidth, imgHeight);
@@ -162,8 +163,8 @@ export const exportEntregaToPDF = async (entrega: Entrega) => {
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
-        doc.text(`Página ${i} de ${pageCount}`, pageWidth - 14, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
-        doc.text("Reporte confidencial - ResQ Hub", 14, doc.internal.pageSize.getHeight() - 10);
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth - margin, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+        doc.text("Reporte confidencial - ResQ Hub", margin, doc.internal.pageSize.getHeight() - 10);
     }
 
     // --- Save the PDF ---

@@ -77,9 +77,9 @@ export function EntregasTable() {
     router.push(`/dashboard/entregas/editar/${entregaId}`);
   };
 
-  const handleExportClick = (entrega: Entrega) => {
+  const handleExportClick = async (entrega: Entrega) => {
     try {
-        exportEntregaToPDF(entrega);
+        await exportEntregaToPDF(entrega);
         toast({
             title: "Exportación Exitosa",
             description: `Se ha generado el PDF para la entrega a ${entrega.receptorNombre}.`

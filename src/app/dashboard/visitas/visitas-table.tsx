@@ -62,9 +62,9 @@ export function VisitasTable() {
     router.push(`/dashboard/visitas/editar/${visitaId}`);
   };
 
-  const handleExportClick = (visita: VisitaTecnica) => {
+  const handleExportClick = async (visita: VisitaTecnica) => {
     try {
-        exportVisitaToPDF(visita, userProfile);
+        await exportVisitaToPDF(visita, userProfile);
         toast({
             title: "Exportación Exitosa",
             description: `Se ha generado el PDF para el acta ${visita.actaNumero}.`
