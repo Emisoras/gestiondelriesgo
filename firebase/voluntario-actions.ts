@@ -1,6 +1,6 @@
 
 'use server';
-import { addDoc, collection, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { firestore } from '@/firebase/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -21,6 +21,21 @@ export const addVoluntario = async (voluntarioData: any) => {
         throw permissionError;
     }
 };
+
+export const updateVoluntario = async (id: string, voluntarioData: any) => {
+    const docRef = doc(firestore, 'voluntarios', id);
+    try {
+        await updateDoc(docRef, voluntarioData);
+    } catch (serverError: any) {
+        const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'update',
+            requestResourceData: voluntarioData,
+        });
+        throw permissionError;
+    }
+};
+
 
 export const deleteVoluntario = async (id: string) => {
     const docRef = doc(firestore, 'voluntarios', id);

@@ -234,12 +234,12 @@ export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
             if (visitaId) {
                 await updateVisita(visitaId, dataPayload);
                 toast({ title: "Actualización Exitosa", description: "El acta de visita ha sido actualizada." });
-                exportVisitaToPDF(dataPayload, userProfile);
+                await exportVisitaToPDF(dataPayload, userProfile);
                 router.push('/dashboard/visitas/listado');
             } else {
                 const newVisitaId = await addVisita(dataPayload);
                 toast({ title: "Registro Exitoso", description: "El acta de visita ha sido guardada." });
-                exportVisitaToPDF({ ...dataPayload, id: newVisitaId }, userProfile);
+                await exportVisitaToPDF({ ...dataPayload, id: newVisitaId }, userProfile);
                 
                 // Reset form for new entry
                 const newActa = generateActaNumero();

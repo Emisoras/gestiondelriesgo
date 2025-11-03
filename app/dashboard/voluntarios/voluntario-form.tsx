@@ -17,8 +17,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { useState }from "react";
-import { addVoluntario } from "@/firebase/voluntario-actions";
+import { useState, useEffect }from "react";
+import { addVoluntario, updateVoluntario } from "@/firebase/voluntario-actions";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 
 const skills = [
@@ -39,8 +41,8 @@ const skills = [
 ];
 
 const formSchema = z.object({
-  autorizacion_datos: z.literal(true, {
-    errorMap: () => ({ message: "Debe aceptar la autorización de datos para continuar." }),
+  autorizacion_datos: z.boolean().refine(val => val === true, {
+    message: "Debe aceptar la autorización de datos para continuar.",
   }),
   nombre: z.string().min(2, "El nombre es requerido."),
   apellido: z.string().min(2, "El apellido es requerido."),
@@ -57,43 +59,69 @@ const formSchema = z.object({
   }),
 });
 
-export function VoluntarioForm() {
+const defaultValues = {
+  autorizacion_datos: true, // Assume true for editing
+  nombre: "",
+  apellido: "",
+  documento_identidad: "",
+  email: "",
+  telefono: "",
+  habilidades: [],
+  edad: "",
+  direccion: "",
+  barrio: "",
+  perfil_profesional: "",
+  organizacion: "",
+};
+
+
+type VoluntarioFormProps = {
+    voluntarioId?: string;
+    initialValues?: Partial<z.infer<typeof formSchema>>;
+};
+
+
+export function VoluntarioForm({ voluntarioId, initialValues }: VoluntarioFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      autorizacion_datos: false,
-      nombre: "",
-      apellido: "",
-      documento_identidad: "",
-      email: "",
-      telefono: "",
-      habilidades: [],
-      edad: "",
-      direccion: "",
-      barrio: "",
-      perfil_profesional: "",
-      organizacion: "",
-    },
+    defaultValues: initialValues ? { ...defaultValues, ...initialValues, autorizacion_datos: true } : { ...defaultValues, autorizacion_datos: false},
   });
+
+  useEffect(() => {
+    if (initialValues) {
+        form.reset({ ...defaultValues, ...initialValues, autorizacion_datos: true });
+    }
+  }, [initialValues, form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     
     try {
-      await addVoluntario(values);
-      toast({
-        title: "¡Gracias por unirte!",
-        description: `${values.nombre}, hemos recibido tu registro.`,
-        className: "bg-accent text-accent-foreground",
-      });
-      form.reset();
+        if (voluntarioId) {
+            await updateVoluntario(voluntarioId, values);
+            toast({
+                title: "¡Actualización Exitosa!",
+                description: `Los datos de ${values.nombre} han sido actualizados.`,
+            });
+            router.push("/dashboard/voluntarios/listado");
+        } else {
+            await addVoluntario(values);
+            toast({
+                title: "¡Gracias por unirte!",
+                description: `${values.nombre}, hemos recibido tu registro.`,
+                className: "bg-accent text-accent-foreground",
+            });
+            form.reset({ ...defaultValues, autorizacion_datos: false });
+        }
     } catch (error) {
        toast({
         title: "Error inesperado",
-        description: "Ocurrió un error al intentar registrar el voluntario. Verifique los permisos.",
+        description: "Ocurrió un error al intentar guardar el registro. Verifique los permisos.",
         variant: "destructive"
       });
     } finally {
@@ -114,6 +142,7 @@ export function VoluntarioForm() {
                 <Checkbox
                   checked={field.value}
                   onCheckedChange={field.onChange}
+                  disabled={!!voluntarioId}
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
@@ -300,9 +329,9 @@ export function VoluntarioForm() {
                                 checked={field.value?.includes(item.id)}
                                 onCheckedChange={(checked) => {
                                     return checked
-                                    ? field.onChange([...field.value, item.id])
+                                    ? field.onChange([...(field.value || []), item.id])
                                     : field.onChange(
-                                        field.value?.filter(
+                                        (field.value || [])?.filter(
                                             (value) => value !== item.id
                                         )
                                         );
@@ -324,11 +353,10 @@ export function VoluntarioForm() {
         />
         
         <Button type="submit" size="lg" disabled={isSubmitting} className="w-full bg-primary hover:bg-primary/90">
-          {isSubmitting ? "Registrando..." : "Registrarme como Voluntario"}
+          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {voluntarioId ? 'Actualizar Voluntario' : 'Registrarme como Voluntario'}
         </Button>
       </form>
     </Form>
   );
 }
-
-    
