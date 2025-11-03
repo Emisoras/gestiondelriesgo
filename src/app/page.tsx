@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Users, Gift, LogIn } from 'lucide-react';
+import { Users, Gift, LogIn, HeartHandshake } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
@@ -47,9 +47,12 @@ export default function LandingPage() {
               <p className="mt-4 text-muted-foreground md:text-xl">
                 ResQ Hub centraliza el registro de afectados, voluntarios y donaciones para una respuesta a desastres más eficiente y humana.
               </p>
-              <div className="mt-6">
+              <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Link href="/dashboard">Acceder al Dashboard</Link>
+                </Button>
+                 <Button asChild size="lg" variant="secondary">
+                  <Link href="/registro-voluntarios">Conviértete en Voluntario</Link>
                 </Button>
               </div>
             </div>
@@ -71,7 +74,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="grid gap-1 text-center">
-                <Logo className="h-10 w-10 mx-auto text-primary" />
+                <HeartHandshake className="h-10 w-10 mx-auto text-primary" />
                 <h3 className="text-lg font-bold font-headline">Gestión de Voluntarios</h3>
                 <p className="text-sm text-muted-foreground">
                   Inscribe y organiza voluntarios eficientemente, asignándolos a los grupos de apoyo donde más se necesitan.
