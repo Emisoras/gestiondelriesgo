@@ -17,7 +17,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users, Siren } from "lucide-react";
+import { LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users, Siren, Archive, Package } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -76,6 +76,7 @@ export function SidebarNav() {
         { href: "/dashboard/donaciones/listado", label: "Listado" },
       ]
     },
+    { href: "/dashboard/inventario", icon: Archive, label: "Inventario" },
     { 
       href: "/dashboard/entregas", 
       icon: Truck, 
@@ -99,6 +100,11 @@ export function SidebarNav() {
   ];
 
   const adminNavItems = [
+     { 
+        href: "/dashboard/admin/articulos", 
+        icon: Package, 
+        label: "Catálogo de Artículos",
+    },
     { 
         href: "/dashboard/admin/users", 
         icon: Users, 

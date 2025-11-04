@@ -213,116 +213,62 @@
       "description": "Representa una donación recibida.",
       "type": "object",
       "properties": {
-        "donante": {
-          "type": "string",
-          "description": "Nombre del donante o de la organización."
-        },
-        "tipo_persona": {
-          "type": "string",
-          "enum": ["natural", "juridica"],
-          "description": "Tipo de persona que realiza la donación."
-        },
-        "identificacion": {
-          "type": "string",
-          "description": "RIF o Cédula de Identidad del donante."
-        },
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "Correo electrónico de contacto."
-        },
-        "telefono": {
-          "type": "string",
-          "description": "Número de teléfono de contacto."
-        },
-        "direccion": {
-          "type": "string",
-          "description": "Dirección del donante."
-        },
-        "tipo_donacion": {
-          "type": "string",
-          "enum": ["monetaria", "alimentos", "ropa_calzado", "medicamentos", "utiles_aseo", "utiles_cocina", "fresadas", "otro"],
-          "description": "Categoría principal de la donación."
-        },
-        "otro_tipo_donacion": {
-            "type": "string",
-            "description": "Especificación si el tipo de donación es 'otro'."
-        },
-        "descripcion": {
-          "type": "string",
-          "description": "Descripción detallada y cantidad de la donación."
-        },
-        "fotos_donacion": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "format": "uri"
+        "donante": { "type": "string" },
+        "tipo_persona": { "type": "string", "enum": ["natural", "juridica"] },
+        "identificacion": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "telefono": { "type": "string" },
+        "direccion": { "type": "string" },
+        "tipo_donacion": { "type": "string", "enum": ["monetaria", "alimentos", "ropa", "medicamentos", "aseo", "cocina", "frazadas", "otro"] },
+        "monto": { "type": "number", "description": "Monto si la donación es monetaria." },
+        "descripcion_general": { "type": "string", "description": "Descripción si es monetaria u otro." },
+        "articulos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "articuloId": { "type": "string" },
+              "nombre": { "type": "string" },
+              "cantidad": { "type": "number" },
+              "unidad": { "type": "string" }
             },
-            "description": "URLs de las fotos de la donación."
+            "required": ["nombre", "cantidad", "unidad"]
+          }
         },
-        "observaciones": {
-            "type": "string",
-            "description": "Observaciones adicionales sobre la donación."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp de creación del registro."
-        }
+        "fotos_donacion": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "observaciones": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["donante", "tipo_persona", "identificacion", "tipo_donacion", "descripcion"]
+      "required": ["donante", "tipo_persona", "identificacion", "tipo_donacion"]
     },
     "Entrega": {
       "title": "Entrega",
       "description": "Representa una entrega de ayuda a un damnificado.",
       "type": "object",
       "properties": {
-        "receptorId": {
-          "type": "string",
-          "description": "ID del documento del damnificado que recibe la ayuda."
-        },
-        "receptorNombre": {
-          "type": "string",
-          "description": "Nombre del damnificado para fácil visualización."
-        },
-        "fecha_entrega": {
-          "type": "string",
-          "format": "date",
-          "description": "Fecha en que se realiza la entrega."
-        },
-        "descripcion_entrega": {
-          "type": "string",
-          "description": "Descripción de los artículos entregados y su cantidad."
-        },
-        "fotos_entrega": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "format": "uri"
+        "receptorId": { "type": "string" },
+        "receptorNombre": { "type": "string" },
+        "fecha_entrega": { "type": "string", "format": "date" },
+        "articulos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "articuloId": { "type": "string" },
+              "nombre": { "type": "string" },
+              "cantidad": { "type": "number" },
+              "unidad": { "type": "string" }
             },
-            "description": "URLs de las fotos de la entrega."
+            "required": ["nombre", "cantidad", "unidad"]
+          }
         },
-        "responsable": {
-          "type": "string",
-          "description": "Nombre del miembro del equipo que realiza la entrega."
-        },
-        "firmaReceptor": {
-          "type": "string",
-          "format": "uri",
-          "description": "Firma del receptor como imagen Data URL."
-        },
-        "huellaReceptor": {
-          "type": "string",
-          "format": "uri",
-          "description": "Huella dactilar del receptor como imagen Data URL."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp de creación del registro."
-        }
+        "fotos_entrega": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "responsable": { "type": "string" },
+        "firmaReceptor": { "type": "string", "format": "uri" },
+        "huellaReceptor": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["receptorId", "receptorNombre", "fecha_entrega", "descripcion_entrega", "responsable"]
+      "required": ["receptorId", "receptorNombre", "fecha_entrega", "articulos", "responsable"]
     },
     "VisitaTecnica": {
       "title": "Visita Tecnica",
@@ -350,6 +296,30 @@
         "firmaProfesional": { "type": "string", "format": "uri" }
       },
       "required": ["actaNumero", "damnificadoId", "profesionalAsignado", "fechaVisita", "tipoEvento", "descripcionRequerimiento"]
+    },
+     "Inventario": {
+      "title": "Inventario",
+      "description": "Representa un artículo en el inventario de donaciones.",
+      "type": "object",
+      "properties": {
+        "articuloId": { "type": "string", "description": "ID del artículo en el catálogo." },
+        "nombre": { "type": "string", "description": "Nombre del artículo." },
+        "cantidad": { "type": "number", "description": "Cantidad disponible en stock." },
+        "unidad": { "type": "string", "description": "Unidad de medida (ej: kg, unidades, litros)." },
+        "lastUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["articuloId", "nombre", "cantidad", "unidad"]
+    },
+    "Articulo": {
+      "title": "Articulo",
+      "description": "Representa un artículo maestro en el catálogo de inventario.",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string", "description": "Nombre único del artículo." },
+        "categoria": { "type": "string", "description": "Categoría del artículo (ej: Alimentos, Ropa, Medicamentos)." },
+        "unidad": { "type": "string", "description": "Unidad de medida estándar (ej: kg, und, lts)." }
+      },
+      "required": ["nombre", "categoria", "unidad"]
     }
   },
   "auth": {
@@ -357,40 +327,38 @@
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
-      },
+      "schema": { "$ref": "#/entities/UserProfile" },
       "description": "Colección de perfiles de usuario."
     },
     "/damnificados/{damnificadoId}": {
-      "schema": {
-        "$ref": "#/entities/Damnificado"
-      },
+      "schema": { "$ref": "#/entities/Damnificado" },
       "description": "Colección de todos los damnificados registrados en el sistema."
     },
     "/voluntarios/{voluntarioId}": {
-        "schema": {
-            "$ref": "#/entities/Voluntario"
-        },
-        "description": "Colección de todos los voluntarios registrados en el sistema."
+      "schema": { "$ref": "#/entities/Voluntario" },
+      "description": "Colección de todos los voluntarios registrados en el sistema."
     },
     "/donaciones/{donacionId}": {
-        "schema": {
-            "$ref": "#/entities/Donacion"
-        },
-        "description": "Colección de todas las donaciones recibidas."
+      "schema": { "$ref": "#/entities/Donacion" },
+      "description": "Colección de todas las donaciones recibidas."
     },
     "/entregas/{entregaId}": {
-        "schema": {
-            "$ref": "#/entities/Entrega"
-        },
-        "description": "Colección de todas las entregas de ayuda realizadas."
+      "schema": { "$ref": "#/entities/Entrega" },
+      "description": "Colección de todas las entregas de ayuda realizadas."
     },
     "/visitas/{visitaId}": {
-        "schema": {
-            "$ref": "#/entities/VisitaTecnica"
-        },
-        "description": "Colección de todas las visitas técnicas y de emergencia."
+      "schema": { "$ref": "#/entities/VisitaTecnica" },
+      "description": "Colección de todas las visitas técnicas y de emergencia."
+    },
+    "/inventario/{itemId}": {
+      "schema": { "$ref": "#/entities/Inventario" },
+      "description": "Colección para el inventario de donaciones."
+    },
+    "/catalogoArticulos/{articuloId}": {
+      "schema": { "$ref": "#/entities/Articulo" },
+      "description": "Colección para el catálogo maestro de artículos."
     }
   }
 }
+
+    

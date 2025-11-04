@@ -28,7 +28,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Loader2, Trash2, Pencil, Search } from "lucide-react";
+import { MoreHorizontal, Loader2, Trash2, Pencil, Search, DollarSign } from "lucide-react";
 import { format } from 'date-fns';
 import { useCollection, useUser } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,9 @@ type Donacion = {
     id: string;
     donante: string;
     tipo_donacion: string;
-    descripcion: string;
+    monto?: number;
+    descripcion_general?: string;
+    articulos: { nombre: string, cantidad: number, unidad: string }[];
     createdAt: {
         seconds: number;
         nanoseconds: number;
@@ -67,11 +69,13 @@ export function DonacionesTable() {
   const filteredDonaciones = donaciones?.filter((donacion) => {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
       const fecha = formatDate(donacion.createdAt).toLowerCase();
+      const searchInArticulos = donacion.articulos?.some(a => a.nombre.toLowerCase().includes(lowerCaseSearchTerm));
 
       return (
           donacion.donante.toLowerCase().includes(lowerCaseSearchTerm) ||
-          donacion.tipo_donacion.replace(/_/g, " ").toLowerCase().includes(lowerCaseSearchTerm) ||
-          donacion.descripcion.toLowerCase().includes(lowerCaseSearchTerm) ||
+          (donacion.tipo_donacion && donacion.tipo_donacion.toLowerCase().includes(lowerCaseSearchTerm)) ||
+          (donacion.descripcion_general && donacion.descripcion_general.toLowerCase().includes(lowerCaseSearchTerm)) ||
+          searchInArticulos ||
           fecha.includes(lowerCaseSearchTerm)
       );
   });
@@ -92,7 +96,7 @@ export function DonacionesTable() {
             await deleteDonacion(selectedDonacion.id);
             toast({
               title: "Registro Eliminado",
-              description: "La donación ha sido eliminada correctamente.",
+              description: "La donación ha sido eliminada correctamente. El inventario no se ha ajustado automáticamente.",
             });
             forceRefetch();
         } catch(error) {
@@ -107,6 +111,38 @@ export function DonacionesTable() {
     setSelectedDonacion(null);
   };
 
+  const getSummary = (donacion: Donacion) => {
+    if (donacion.tipo_donacion === 'monetaria') {
+        return (
+            <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-green-600" />
+                <span className="font-semibold">
+                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(donacion.monto || 0)}
+                </span>
+                {donacion.descripcion_general && <span className="text-muted-foreground text-xs">({donacion.descripcion_general})</span>}
+            </div>
+        )
+    }
+    if (!donacion.articulos || donacion.articulos.length === 0) return 'N/A';
+    const summary = donacion.articulos.map(a => `${a.cantidad} ${a.unidad} de ${a.nombre}`).join(', ');
+    return summary.length > 80 ? summary.substring(0, 80) + '...' : summary;
+  }
+  
+  const getDonationTypeLabel = (type: string) => {
+    const labels: { [key: string]: string } = {
+        monetaria: "Monetaria",
+        alimentos: "Alimentos",
+        ropa: "Ropa y Calzado",
+        medicamentos: "Medicamentos",
+        aseo: "Útiles de Aseo",
+        cocina: "Útiles de Cocina",
+        frazadas: "Frazadas y Cobijas",
+        otro: "Otro"
+    };
+    return labels[type] || type;
+  }
+
+
   return (
     <>
       <div className="space-y-4">
@@ -114,7 +150,7 @@ export function DonacionesTable() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Buscar por donante, tipo, descripción o fecha..."
+            placeholder="Buscar por donante, tipo, artículo..."
             className="pl-8 w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -126,7 +162,7 @@ export function DonacionesTable() {
                 <TableRow>
                     <TableHead>Donante</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Cantidad/Descripción</TableHead>
+                    <TableHead>Contenido / Monto</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -146,20 +182,11 @@ export function DonacionesTable() {
                     <TableRow key={donacion.id}>
                         <TableCell className="font-medium">{donacion.donante}</TableCell>
                         <TableCell>
-                        <Badge
-                            variant={
-                            donacion.tipo_donacion === "monetaria"
-                                ? "default"
-                                : donacion.tipo_donacion === "medicamentos"
-                                ? "destructive"
-                                : "secondary"
-                            }
-                            className="capitalize"
-                        >
-                            {donacion.tipo_donacion.replace(/_/g, " ")}
-                        </Badge>
+                            <Badge variant="secondary" className="capitalize">{getDonationTypeLabel(donacion.tipo_donacion)}</Badge>
                         </TableCell>
-                        <TableCell>{donacion.descripcion}</TableCell>
+                        <TableCell>
+                          <span className="truncate">{getSummary(donacion)}</span>
+                        </TableCell>
                         <TableCell>{formatDate(donacion.createdAt)}</TableCell>
                         <TableCell className="text-right">
                             <DropdownMenu>
@@ -207,7 +234,7 @@ export function DonacionesTable() {
                 <AlertDialogTitle>¿Estás seguro de que quieres eliminar este registro?</AlertDialogTitle>
                 <AlertDialogDescription>
                     Esta acción no se puede deshacer. Esto eliminará permanentemente la donación de
-                    {selectedDonacion && ` ${selectedDonacion.donante}`}.
+                    {selectedDonacion && ` ${selectedDonacion.donante}`}. El inventario no se ajustará automáticamente.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -221,3 +248,5 @@ export function DonacionesTable() {
     </>
   );
 }
+
+    

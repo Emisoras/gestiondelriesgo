@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,11 +15,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState, useMemo } from "react";
-import { Camera, Loader2, Trash2, Fingerprint, PenSquare, UploadCloud, CalendarIcon } from "lucide-react";
+import { Camera, Loader2, Trash2, Fingerprint, PenSquare, UploadCloud, CalendarIcon, PlusCircle, MinusCircle, Check, ChevronsUpDown } from "lucide-react";
 import { useCollection } from "@/firebase";
 import { addEntrega, updateEntrega } from "@/firebase/entrega-actions";
 import { useRouter } from "next/navigation";
@@ -30,7 +29,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-
+import { Separator } from "@/components/ui/separator";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import type { Articulo } from "../admin/articulos/articulos-table";
 
 type Damnificado = {
   id: string;
@@ -48,10 +49,17 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const articuloSchema = z.object({
+  articuloId: z.string().optional(),
+  nombre: z.string().min(1, "Debe seleccionar un artículo."),
+  cantidad: z.coerce.number().positive("La cantidad debe ser mayor a 0."),
+  unidad: z.string().min(1, "La unidad es requerida."),
+});
+
 const formSchema = z.object({
   receptorId: z.string({ required_error: "Debe seleccionar un receptor." }),
   fecha_entrega: z.date({ required_error: "La fecha de entrega es requerida." }),
-  descripcion_entrega: z.string().min(5, "La descripción de la entrega es requerida."),
+  articulos: z.array(articuloSchema).min(1, "Debe agregar al menos un artículo entregado."),
   fotos_entrega: z.array(z.string()).optional(),
   new_fotos_entrega: z.any().optional(),
   responsable: z.string().min(2, "El nombre del responsable es requerido."),
@@ -65,7 +73,7 @@ const parseInitialValues = (initialValues: any) => {
         return { 
             receptorId: "",
             fecha_entrega: undefined, // Set to undefined to avoid hydration error
-            descripcion_entrega: "",
+            articulos: [],
             responsable: "",
             fotos_entrega: [],
             firmaReceptor: "",
@@ -77,6 +85,9 @@ const parseInitialValues = (initialValues: any) => {
         parsed.fecha_entrega = new Date(parsed.fecha_entrega.seconds * 1000);
     } else if (typeof parsed.fecha_entrega === 'string') {
         parsed.fecha_entrega = new Date(parsed.fecha_entrega);
+    }
+     if (!parsed.articulos || parsed.articulos.length === 0) {
+        parsed.articulos = [];
     }
 
     if (!parsed.fotos_entrega) parsed.fotos_entrega = [];
@@ -94,6 +105,7 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { data: damnificados, loading: loadingDamnificados } = useCollection<Damnificado>('damnificados');
+  const { data: catalogo, loading: loadingCatalogo } = useCollection<Articulo>('catalogoArticulos');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingImages, setExistingImages] = useState<string[]>(initialValues?.fotos_entrega || []);
   const [existingHuella, setExistingHuella] = useState<string | null>(initialValues?.huellaReceptor || null);
@@ -104,11 +116,17 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
     defaultValues: useMemo(() => parseInitialValues(initialValues), [initialValues]),
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "articulos",
+  });
+
   useEffect(() => {
     if (!initialValues) {
         form.setValue("fecha_entrega", new Date());
+        append({ nombre: "", cantidad: 1, unidad: "" });
     }
-  }, [initialValues, form]);
+  }, [initialValues, form, append]);
   
   useEffect(() => {
     const parsed = parseInitialValues(initialValues);
@@ -164,14 +182,14 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
             router.push('/dashboard/entregas/listado');
         } else {
             await addEntrega(dataPayload);
-            toast({ title: "Registro Exitoso", description: "La entrega ha sido registrada." });
+            toast({ title: "Registro Exitoso", description: "La entrega ha sido registrada y el inventario actualizado." });
             form.reset(parseInitialValues(null));
             form.setValue("fecha_entrega", new Date()); // Reset date for new entry on client
             setExistingImages([]);
             setExistingHuella(null);
         }
     } catch(error) {
-        toast({ title: "Error", description: "No se pudo registrar la entrega. Verifique sus permisos.", variant: "destructive" });
+        toast({ title: "Error", description: "No se pudo registrar la entrega. Verifique sus permisos o el stock disponible.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
@@ -246,19 +264,110 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
             />
         </div>
         
-        <FormField
-          control={form.control}
-          name="descripcion_entrega"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Artículos Entregados y Cantidad</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Ej: 2 kits de alimentos, 5 cobijas, 10L de agua" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <Separator />
+
+        <div>
+            <FormLabel className="text-lg font-medium">Artículos Entregados</FormLabel>
+            <FormDescription>Busque y seleccione los artículos del inventario.</FormDescription>
+            <div className="space-y-4 mt-4">
+                {fields.map((field, index) => (
+                     <div key={field.id} className="flex gap-2 items-start p-4 border rounded-md">
+                        <FormField
+                            control={form.control}
+                            name={`articulos.${index}.nombre`}
+                            render={({ field: nombreField }) => (
+                                <FormItem className="flex-1">
+                                    <FormLabel>Artículo</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn("w-full justify-between", !nombreField.value && "text-muted-foreground")}
+                                            >
+                                            {nombreField.value
+                                                ? catalogo?.find((item) => item.nombre === nombreField.value)?.nombre
+                                                : "Seleccione un artículo"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[300px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Buscar artículo..." />
+                                            <CommandList>
+                                                <CommandEmpty>No se encontraron artículos.</CommandEmpty>
+                                                <CommandGroup>
+                                                {catalogo?.map((item) => (
+                                                    <CommandItem
+                                                    value={item.nombre}
+                                                    key={item.id}
+                                                    onSelect={() => {
+                                                        const currentArticulos = form.getValues('articulos');
+                                                        currentArticulos[index] = {
+                                                            ...currentArticulos[index],
+                                                            articuloId: item.id,
+                                                            nombre: item.nombre,
+                                                            unidad: item.unidad
+                                                        };
+                                                        form.setValue('articulos', currentArticulos);
+                                                    }}
+                                                    >
+                                                    <Check className={cn("mr-2 h-4 w-4", item.nombre === nombreField.value ? "opacity-100" : "opacity-0")}/>
+                                                    {item.nombre}
+                                                    </CommandItem>
+                                                ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name={`articulos.${index}.cantidad`}
+                            render={({ field }) => (
+                                <FormItem className="w-24">
+                                    <FormLabel>Cantidad</FormLabel>
+                                    <FormControl><Input type="number" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name={`articulos.${index}.unidad`}
+                            render={({ field }) => (
+                                <FormItem className="w-32">
+                                    <FormLabel>Unidad</FormLabel>
+                                    <FormControl><Input placeholder="und, kg..." {...field} readOnly /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="flex items-end h-full">
+                           <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                               <MinusCircle className="h-4 w-4" />
+                           </Button>
+                        </div>
+                    </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ nombre: "", cantidad: 1, unidad: "" })}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Añadir Artículo
+                </Button>
+                 {form.formState.errors.articulos && typeof form.formState.errors.articulos.message === 'string' && (
+                    <FormMessage>{form.formState.errors.articulos.message}</FormMessage>
+                 )}
+            </div>
+        </div>
+
+        <Separator />
 
         <div className="space-y-4">
             <FormLabel>Fotos de la Entrega</FormLabel>
@@ -354,7 +463,7 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isSubmitting} className="w-full bg-primary hover:bg-primary/90">
+        <Button type="submit" disabled={isSubmitting || loadingDamnificados || loadingCatalogo} className="w-full bg-primary hover:bg-primary/90">
             {isSubmitting ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

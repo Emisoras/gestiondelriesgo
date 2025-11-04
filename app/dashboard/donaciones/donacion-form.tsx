@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,10 +25,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-import { Camera, Loader2, Trash2 } from "lucide-react";
+import { Camera, Loader2, Trash2, PlusCircle, MinusCircle, Check, ChevronsUpDown, DollarSign } from "lucide-react";
 import { addDonacion, updateDonacion } from "@/firebase/donacion-actions";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Separator } from "@/components/ui/separator";
+import { useCollection } from "@/firebase";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import type { Articulo } from "../admin/articulos/articulos-table";
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -39,6 +45,13 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const articuloSchema = z.object({
+  articuloId: z.string().optional(), // Optional because it might not exist yet
+  nombre: z.string().min(1, "El nombre es requerido."),
+  cantidad: z.coerce.number().positive("La cantidad debe ser mayor a 0."),
+  unidad: z.string().min(1, "La unidad es requerida."),
+});
+
 const formSchema = z.object({
   donante: z.string().min(2, "El nombre del donante es requerido."),
   tipo_persona: z.enum(["natural", "juridica"], { required_error: "Debe seleccionar un tipo de persona." }),
@@ -46,20 +59,32 @@ const formSchema = z.object({
   email: z.string().email("Debe ser un correo electrónico válido.").optional().or(z.literal("")),
   telefono: z.string().optional(),
   direccion: z.string().optional(),
-  tipo_donacion: z.enum(["monetaria", "alimentos", "ropa_calzado", "medicamentos", "utiles_aseo", "utiles_cocina", "fresadas", "otro"]),
-  otro_tipo_donacion: z.string().optional(),
-  descripcion: z.string().min(2, "La descripción es requerida."),
+  
+  tipo_donacion: z.enum(["monetaria", "alimentos", "ropa", "medicamentos", "aseo", "cocina", "frazadas", "otro"]),
+  monto: z.coerce.number().optional(),
+  descripcion_general: z.string().optional(),
+  
+  articulos: z.array(articuloSchema).optional(),
+  
   fotos_donacion: z.array(z.string()).optional(),
   new_fotos_donacion: z.any().optional(),
   observaciones: z.string().optional(),
 }).refine(data => {
-    if (data.tipo_donacion === "otro") {
-        return data.otro_tipo_donacion && data.otro_tipo_donacion.length > 0;
+    if (data.tipo_donacion !== 'monetaria' && (!data.articulos || data.articulos.length === 0)) {
+        return false;
     }
     return true;
 }, {
-    message: "Por favor, especifique el tipo de donación.",
-    path: ["otro_tipo_donacion"],
+    message: "Debe agregar al menos un artículo a la donación.",
+    path: ["articulos"],
+}).refine(data => {
+    if (data.tipo_donacion === 'monetaria' && (!data.monto || data.monto <= 0)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Debe ingresar un monto válido para la donación monetaria.",
+    path: ["monto"],
 });
 
 const parseInitialValues = (initialValues: any) => {
@@ -72,16 +97,16 @@ const parseInitialValues = (initialValues: any) => {
             telefono: "",
             direccion: "",
             tipo_donacion: "alimentos",
-            otro_tipo_donacion: "",
-            descripcion: "",
+            articulos: [],
             fotos_donacion: [],
             observaciones: "",
+            monto: 0,
+            descripcion_general: ""
         };
     }
     const parsed = { ...initialValues };
-    if (!parsed.fotos_donacion) {
-        parsed.fotos_donacion = [];
-    }
+    if (!parsed.fotos_donacion) parsed.fotos_donacion = [];
+    if (!parsed.articulos) parsed.articulos = [];
     return parsed;
 };
 
@@ -94,6 +119,7 @@ type DonacionFormProps = {
 export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { data: catalogo, loading: loadingCatalogo } = useCollection<Articulo>('catalogoArticulos');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingImages, setExistingImages] = useState<string[]>(initialValues?.fotos_donacion || []);
 
@@ -101,7 +127,14 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: parseInitialValues(initialValues),
   });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "articulos",
+  });
   
+  const tipoDonacion = form.watch("tipo_donacion");
+
   useEffect(() => {
     const parsed = parseInitialValues(initialValues);
     form.reset(parsed);
@@ -112,7 +145,6 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
     setExistingImages(prev => prev.filter(url => url !== imageUrl));
   };
 
-  const tipoDonacion = form.watch("tipo_donacion");
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
@@ -131,6 +163,13 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
           fotos_donacion: uploadedImageUrls,
       };
       delete dataPayload.new_fotos_donacion;
+      
+      if (dataPayload.tipo_donacion === 'monetaria') {
+        dataPayload.articulos = []; // Clear articles if it's monetary
+      } else {
+        dataPayload.monto = 0; // Clear amount if it's not monetary
+        dataPayload.descripcion_general = "";
+      }
 
         if (donacionId) {
             await updateDonacion(donacionId, dataPayload);
@@ -138,8 +177,8 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
             router.push("/dashboard/donaciones/listado");
         } else {
             await addDonacion(dataPayload);
-            toast({ title: "Registro Exitoso", description: "La donación ha sido registrada." });
-            form.reset();
+            toast({ title: "Registro Exitoso", description: "La donación ha sido registrada y el inventario actualizado." });
+            form.reset(parseInitialValues(null));
             setExistingImages([]);
         }
     } catch (error) {
@@ -242,63 +281,172 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
                 </FormItem>
               )}
             />
+        
+        <Separator />
+
         <FormField
-          control={form.control}
-          name="tipo_donacion"
-          render={({ field }) => (
+            control={form.control}
+            name="tipo_donacion"
+            render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo de Donación</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormLabel>Tipo de Donación</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione un tipo" />
-                  </SelectTrigger>
+                    <SelectTrigger>
+                    <SelectValue placeholder="Seleccione una categoría" />
+                    </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="monetaria">Monetaria</SelectItem>
-                  <SelectItem value="alimentos">Alimentos</SelectItem>
-                  <SelectItem value="ropa_calzado">Ropa y Calzado</SelectItem>
-                  <SelectItem value="medicamentos">Medicamentos</SelectItem>
-                  <SelectItem value="utiles_aseo">Útiles de Aseo</SelectItem>
-                  <SelectItem value="utiles_cocina">Útiles de Cocina</SelectItem>
-                  <SelectItem value="fresadas">Fresadas</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
+                    <SelectItem value="monetaria">Monetaria</SelectItem>
+                    <SelectItem value="alimentos">Alimentos</SelectItem>
+                    <SelectItem value="ropa">Ropa y Calzado</SelectItem>
+                    <SelectItem value="medicamentos">Medicamentos</SelectItem>
+                    <SelectItem value="aseo">Útiles de Aseo</SelectItem>
+                    <SelectItem value="cocina">Útiles de Cocina</SelectItem>
+                    <SelectItem value="frazadas">Frazadas y Cobijas</SelectItem>
+                    <SelectItem value="otro">Otro</SelectItem>
                 </SelectContent>
-              </Select>
-              <FormMessage />
+                </Select>
+                <FormMessage />
             </FormItem>
-          )}
+            )}
         />
-
-        {tipoDonacion === "otro" && (
-            <FormField
-                control={form.control}
-                name="otro_tipo_donacion"
-                render={({ field }) => (
+        
+        {tipoDonacion === 'monetaria' ? (
+            <div className="space-y-4 rounded-md border p-4">
+                <FormField
+                    control={form.control}
+                    name="monto"
+                    render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Especifique el tipo de donación</FormLabel>
+                        <FormLabel>Monto de la Donación</FormLabel>
                         <FormControl>
-                            <Input placeholder="Ej: Herramientas, Juguetes, etc." {...field} />
+                            <div className="relative">
+                                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input type="number" placeholder="0.00" className="pl-8" {...field} />
+                            </div>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
-                )}
-            />
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="descripcion_general"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Descripción</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Ej: Transferencia Bancaria, Efectivo" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        ) : (
+             <div>
+                <FormLabel className="text-lg font-medium">Artículos Donados</FormLabel>
+                <FormDescription>Escriba para buscar un artículo o para crear uno nuevo.</FormDescription>
+                <div className="space-y-4 mt-4">
+                    {fields.map((field, index) => (
+                        <div key={field.id} className="flex gap-2 items-start p-4 border rounded-md">
+                            <FormField
+                                control={form.control}
+                                name={`articulos.${index}.nombre`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Input 
+                                                      placeholder="Buscar o crear artículo..." 
+                                                      {...field}
+                                                      onChange={(e) => {
+                                                        field.onChange(e.target.value);
+                                                        const currentArticulos = form.getValues('articulos') || [];
+                                                        currentArticulos[index] = { ...currentArticulos[index], articuloId: undefined, unidad: ''};
+                                                        form.setValue('articulos', currentArticulos);
+                                                      }}
+                                                    />
+                                                </div>
+                                            </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Buscar artículo..." value={field.value} onValueChange={field.onChange} />
+                                                    <CommandList>
+                                                        <CommandEmpty>No se encontraron resultados. Se creará un nuevo artículo.</CommandEmpty>
+                                                        <CommandGroup>
+                                                        {catalogo?.map((item) => (
+                                                            <CommandItem
+                                                            value={item.nombre}
+                                                            key={item.id}
+                                                            onSelect={() => {
+                                                                const currentArticulos = form.getValues('articulos') || [];
+                                                                currentArticulos[index] = {
+                                                                    articuloId: item.id,
+                                                                    nombre: item.nombre,
+                                                                    unidad: item.unidad,
+                                                                    cantidad: currentArticulos[index].cantidad || 1,
+                                                                };
+                                                                form.setValue('articulos', currentArticulos);
+                                                            }}
+                                                            >
+                                                            <Check className={cn("mr-2 h-4 w-4", item.id === form.getValues(`articulos.${index}.articuloId`) ? "opacity-100" : "opacity-0")}/>
+                                                            {item.nombre}
+                                                            </CommandItem>
+                                                        ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name={`articulos.${index}.cantidad`}
+                                render={({ field }) => (
+                                    <FormItem className="w-24">
+                                        <FormControl><Input type="number" placeholder="Cant." {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name={`articulos.${index}.unidad`}
+                                render={({ field }) => (
+                                    <FormItem className="w-32">
+                                        <FormControl><Input placeholder="und, kg, lts..." {...field} disabled={!!form.watch(`articulos.${index}.articuloId`)}/></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="flex items-end h-full">
+                               <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
+                                   <MinusCircle className="h-4 w-4" />
+                               </Button>
+                            </div>
+                        </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ nombre: "", cantidad: 1, unidad: "" })}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Añadir Artículo
+                    </Button>
+                     {form.formState.errors.articulos && typeof form.formState.errors.articulos.message === 'string' && (
+                        <FormMessage>{form.formState.errors.articulos.message}</FormMessage>
+                     )}
+                </div>
+            </div>
         )}
         
-        <FormField
-          control={form.control}
-          name="descripcion"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cantidad y Descripción</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Ej: $ 500, 100 kg de arroz, 20 cajas de ropa..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <Separator />
         
         <div className="space-y-4">
           <FormLabel>Fotos de la Donación</FormLabel>
@@ -347,7 +495,7 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isSubmitting} className="w-full bg-primary hover:bg-primary/90">
+        <Button type="submit" disabled={isSubmitting || loadingCatalogo} className="w-full bg-primary hover:bg-primary/90">
             {isSubmitting ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

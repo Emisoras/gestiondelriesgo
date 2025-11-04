@@ -40,7 +40,7 @@ import { exportEntregaToPDF } from "@/lib/pdf-generator-entrega";
 type Entrega = {
     id: string;
     receptorNombre: string;
-    descripcion_entrega: string;
+    articulos: { nombre: string, cantidad: number, unidad: string }[];
     responsable: string;
     fecha_entrega: {
         seconds: number;
@@ -100,7 +100,7 @@ export function EntregasTable() {
             await deleteEntrega(selectedEntrega.id);
             toast({
               title: "Registro Eliminado",
-              description: "La entrega ha sido eliminada correctamente.",
+              description: "La entrega ha sido eliminada correctamente. El inventario no se ha ajustado automáticamente.",
             });
             forceRefetch();
         } catch(error) {
@@ -115,6 +115,10 @@ export function EntregasTable() {
     setSelectedEntrega(null);
   };
 
+  const getArticulosSummary = (articulos: Entrega['articulos']) => {
+    if (!articulos || articulos.length === 0) return 'N/A';
+    return articulos.map(a => `${a.cantidad} ${a.unidad} de ${a.nombre}`).join(', ');
+  }
 
   return (
     <>
@@ -142,7 +146,7 @@ export function EntregasTable() {
             entregas.map((entrega) => (
               <TableRow key={entrega.id}>
                 <TableCell className="font-medium">{entrega.receptorNombre}</TableCell>
-                <TableCell>{entrega.descripcion_entrega}</TableCell>
+                <TableCell className="truncate max-w-xs">{getArticulosSummary(entrega.articulos)}</TableCell>
                 <TableCell>{entrega.responsable}</TableCell>
                 <TableCell>{formatDate(entrega.fecha_entrega)}</TableCell>
                 <TableCell className="text-right">
@@ -193,7 +197,7 @@ export function EntregasTable() {
                 <AlertDialogTitle>¿Estás seguro de que quieres eliminar este registro?</AlertDialogTitle>
                 <AlertDialogDescription>
                     Esta acción no se puede deshacer. Esto eliminará permanentemente la entrega a
-                    {selectedEntrega && ` ${selectedEntrega.receptorNombre}`}.
+                    {selectedEntrega && ` ${selectedEntrega.receptorNombre}`}. El inventario no se ajustará automáticamente.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -207,3 +211,5 @@ export function EntregasTable() {
     </>
   );
 }
+
+    
