@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState, useMemo } from "react";
 import { Camera, Loader2, Trash2, Fingerprint, PenSquare, UploadCloud, CalendarIcon, PlusCircle, MinusCircle, Check, ChevronsUpDown } from "lucide-react";
-import { useCollection } from "@/firebase";
+import { useCollection, useUser } from "@/firebase";
 import { addEntrega, updateEntrega } from "@/firebase/entrega-actions";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -58,25 +58,31 @@ const articuloSchema = z.object({
 
 const formSchema = z.object({
   receptorId: z.string({ required_error: "Debe seleccionar un receptor." }),
+  receptorCedula: z.string().optional(),
   fecha_entrega: z.date({ required_error: "La fecha de entrega es requerida." }),
   articulos: z.array(articuloSchema).min(1, "Debe agregar al menos un artículo entregado."),
   fotos_entrega: z.array(z.string()).optional(),
   new_fotos_entrega: z.any().optional(),
   responsable: z.string().min(2, "El nombre del responsable es requerido."),
+  responsableCedula: z.string().optional(),
   firmaReceptor: z.string().optional(),
+  firmaResponsable: z.string().optional(),
   huellaReceptor: z.string().optional(),
   new_huellaReceptor: z.any().optional(),
 });
 
-const parseInitialValues = (initialValues: any) => {
+const parseInitialValues = (initialValues: any, currentUserProfile: any) => {
     if (!initialValues) {
         return { 
             receptorId: "",
-            fecha_entrega: undefined, // Set to undefined to avoid hydration error
-            articulos: [],
-            responsable: "",
+            receptorCedula: "",
+            fecha_entrega: new Date(),
+            articulos: [{ nombre: "", cantidad: 1, unidad: "" }],
+            responsable: currentUserProfile?.displayName || "",
+            responsableCedula: "",
             fotos_entrega: [],
             firmaReceptor: "",
+            firmaResponsable: "",
             huellaReceptor: "",
         };
     }
@@ -92,6 +98,7 @@ const parseInitialValues = (initialValues: any) => {
 
     if (!parsed.fotos_entrega) parsed.fotos_entrega = [];
     if (!parsed.firmaReceptor) parsed.firmaReceptor = "";
+    if (!parsed.firmaResponsable) parsed.firmaResponsable = "";
     if (!parsed.huellaReceptor) parsed.huellaReceptor = "";
     return parsed;
 };
@@ -104,6 +111,7 @@ type EntregaFormProps = {
 export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { userProfile } = useUser();
   const { data: damnificados, loading: loadingDamnificados } = useCollection<Damnificado>('damnificados');
   const { data: catalogo, loading: loadingCatalogo } = useCollection<Articulo>('catalogoArticulos');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +121,7 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: useMemo(() => parseInitialValues(initialValues), [initialValues]),
+    defaultValues: useMemo(() => parseInitialValues(initialValues, userProfile), [initialValues, userProfile]),
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -122,18 +130,11 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
   });
 
   useEffect(() => {
-    if (!initialValues) {
-        form.setValue("fecha_entrega", new Date());
-        append({ nombre: "", cantidad: 1, unidad: "" });
-    }
-  }, [initialValues, form, append]);
-  
-  useEffect(() => {
-    const parsed = parseInitialValues(initialValues);
+    const parsed = parseInitialValues(initialValues, userProfile);
     form.reset(parsed);
     setExistingImages(parsed.fotos_entrega || []);
     setExistingHuella(parsed.huellaReceptor || null);
-  }, [initialValues, form]);
+  }, [initialValues, userProfile, form]);
   
   const handleRemoveImage = (imageUrl: string) => {
     setExistingImages(prev => prev.filter(url => url !== imageUrl));
@@ -153,7 +154,6 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
     let uploadedHuellaUrl: string | undefined = values.huellaReceptor;
     
     try {
-        // Handle delivery photos
         const filesToUpload = values.new_fotos_entrega as FileList;
         if (filesToUpload && filesToUpload.length > 0) {
             const base64Promises = Array.from(filesToUpload).map(file => fileToBase64(file));
@@ -161,7 +161,6 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
             uploadedImageUrls.push(...base64Images);
         }
         
-        // Handle fingerprint image
         const huellaFile = values.new_huellaReceptor?.[0] as File;
         if (huellaFile) {
             uploadedHuellaUrl = await fileToBase64(huellaFile);
@@ -170,6 +169,7 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
         const dataPayload = {
             ...values,
             receptorNombre: `${receptorSeleccionado.nombre} ${receptorSeleccionado.apellido}`,
+            receptorCedula: values.receptorCedula,
             fotos_entrega: uploadedImageUrls,
             huellaReceptor: uploadedHuellaUrl,
         };
@@ -183,8 +183,7 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
         } else {
             await addEntrega(dataPayload);
             toast({ title: "Registro Exitoso", description: "La entrega ha sido registrada y el inventario actualizado." });
-            form.reset(parseInitialValues(null));
-            form.setValue("fecha_entrega", new Date()); // Reset date for new entry on client
+            form.reset(parseInitialValues(null, userProfile));
             setExistingImages([]);
             setExistingHuella(null);
         }
@@ -205,7 +204,13 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Receptor / Familia / Albergue</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={loadingDamnificados}>
+                <Select onValueChange={(value) => {
+                    const selected = damnificados?.find(d => d.id === value);
+                    if (selected) {
+                        field.onChange(value);
+                        form.setValue('receptorCedula', selected.cedula || '');
+                    }
+                }} value={field.value} disabled={loadingDamnificados}>
                     <FormControl>
                     <SelectTrigger>
                         <SelectValue placeholder={loadingDamnificados ? "Cargando receptores..." : "Seleccione un damnificado o albergue"} />
@@ -223,46 +228,59 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
                 </FormItem>
             )}
             />
-             <FormField
-                control={form.control}
-                name="fecha_entrega"
-                render={({ field }) => (
-                <FormItem className="flex flex-col">
-                    <FormLabel>Fecha de Entrega</FormLabel>
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <FormControl>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                            )}
-                        >
-                            {field.value ? (
-                            format(field.value, "PPP", { locale: es })
-                            ) : (
-                            <span>Seleccione una fecha</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                        </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        locale={es}
-                        />
-                    </PopoverContent>
-                    </Popover>
-                    <FormMessage />
+            <FormField
+              control={form.control}
+              name="receptorCedula"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cédula del Receptor</FormLabel>
+                  <FormControl>
+                    <Input {...field} readOnly placeholder="Se completará automáticamente"/>
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
-                )}
+              )}
             />
         </div>
+        <FormField
+            control={form.control}
+            name="fecha_entrega"
+            render={({ field }) => (
+            <FormItem className="flex flex-col">
+                <FormLabel>Fecha de Entrega</FormLabel>
+                <Popover>
+                <PopoverTrigger asChild>
+                    <FormControl>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                        )}
+                    >
+                        {field.value ? (
+                        format(new Date(field.value), "PPP", { locale: es })
+                        ) : (
+                        <span>Seleccione una fecha</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                    </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    initialFocus
+                    locale={es}
+                    />
+                </PopoverContent>
+                </Popover>
+                <FormMessage />
+            </FormItem>
+            )}
+        />
         
         <Separator />
 
@@ -366,7 +384,7 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
                  )}
             </div>
         </div>
-
+        
         <Separator />
 
         <div className="space-y-4">
@@ -402,67 +420,107 @@ export function EntregaForm({ entregaId, initialValues }: EntregaFormProps) {
                 )}
             />
         </div>
-
-        <FormField
-          control={form.control}
-          name="firmaReceptor"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2"><PenSquare className="h-5 w-5"/> Firma del Receptor</FormLabel>
-              <FormControl>
-                <SignaturePad onSave={field.onChange} initialSignature={field.value} />
-              </FormControl>
-               <FormDescription>
-                La persona que recibe la ayuda puede firmar en el panel o puede subir una imagen de su firma.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         
-        <div className="space-y-4">
-            <FormLabel className="flex items-center gap-2"><Fingerprint className="h-5 w-5"/> Huella del Receptor (Opcional)</FormLabel>
-            {existingHuella && (
-                <div className="relative w-40 h-40 group">
-                    <Image src={existingHuella} alt="Huella" layout="fill" objectFit="contain" className="rounded-md border p-2"/>
-                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setExistingHuella(null)}>
-                        <Trash2 className="h-4 w-4"/>
-                    </Button>
-                </div>
-            )}
-            <FormField
+        <Separator />
+
+        <div className="grid md:grid-cols-2 gap-8">
+            <div>
+                <FormField
                 control={form.control}
-                name="new_huellaReceptor"
+                name="firmaReceptor"
                 render={({ field }) => (
                     <FormItem>
-                        <FormControl>
-                            <div className="relative">
-                                <UploadCloud className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                <Input type="file" accept="image/*" className="pl-10" onChange={(e) => field.onChange(e.target.files)} />
-                            </div>
-                        </FormControl>
-                         <FormDescription>
-                            Si dispone de un lector de huellas, puede subir la imagen aquí.
-                        </FormDescription>
-                        <FormMessage />
+                    <FormLabel className="flex items-center gap-2"><PenSquare className="h-5 w-5"/> Firma del Receptor</FormLabel>
+                    <FormControl>
+                        <SignaturePad onSave={field.onChange} initialSignature={field.value} />
+                    </FormControl>
+                    <FormDescription>
+                        La persona que recibe la ayuda puede firmar en el panel o subir una imagen de su firma.
+                    </FormDescription>
+                    <FormMessage />
                     </FormItem>
                 )}
-            />
+                />
+                
+                <div className="space-y-4 mt-4">
+                    <FormLabel className="flex items-center gap-2"><Fingerprint className="h-5 w-5"/> Huella del Receptor (Opcional)</FormLabel>
+                    {existingHuella && (
+                        <div className="relative w-40 h-40 group">
+                            <Image src={existingHuella} alt="Huella" layout="fill" objectFit="contain" className="rounded-md border p-2"/>
+                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setExistingHuella(null)}>
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
+                        </div>
+                    )}
+                    <FormField
+                        control={form.control}
+                        name="new_huellaReceptor"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <div className="relative">
+                                        <UploadCloud className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                        <Input type="file" accept="image/*" className="pl-10" onChange={(e) => field.onChange(e.target.files)} />
+                                    </div>
+                                </FormControl>
+                                <FormDescription>
+                                    Si dispone de un lector de huellas, puede subir la imagen aquí.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </div>
+             <div>
+                <div className="space-y-4">
+                     <FormField
+                    control={form.control}
+                    name="responsable"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Responsable de la Entrega (Miembro CMGRD)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Nombre del miembro del equipo" {...field} readOnly disabled/>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                     <FormField
+                    control={form.control}
+                    name="responsableCedula"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Cédula del Responsable</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Cédula del miembro del equipo" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+
+                <FormField
+                control={form.control}
+                name="firmaResponsable"
+                render={({ field }) => (
+                    <FormItem className="mt-4">
+                    <FormLabel className="flex items-center gap-2"><PenSquare className="h-5 w-5"/> Firma del Responsable</FormLabel>
+                    <FormControl>
+                        <SignaturePad onSave={field.onChange} initialSignature={field.value} />
+                    </FormControl>
+                    <FormDescription>
+                        El responsable puede firmar para dar constancia de la entrega.
+                    </FormDescription>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="responsable"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Responsable de la Entrega (Miembro CMGRD)</FormLabel>
-              <FormControl>
-                <Input placeholder="Nombre del miembro del equipo" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <Button type="submit" disabled={isSubmitting || loadingDamnificados || loadingCatalogo} className="w-full bg-primary hover:bg-primary/90">
             {isSubmitting ? (
                 <>

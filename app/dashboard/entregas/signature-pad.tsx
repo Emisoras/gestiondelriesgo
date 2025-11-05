@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +27,11 @@ const fileToBase64 = (file: File): Promise<string> => {
 export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, initialSignature }) => {
   const sigPadRef = useRef<SignatureCanvas>(null);
   const [currentSignature, setCurrentSignature] = useState<string | null>(initialSignature || null);
+
+  useEffect(() => {
+    // This effect ensures that if the parent form is reset, the signature pad also visually resets.
+    setCurrentSignature(initialSignature || null);
+  }, [initialSignature]);
 
   const clear = () => {
     sigPadRef.current?.clear();

@@ -248,6 +248,7 @@
       "properties": {
         "receptorId": { "type": "string" },
         "receptorNombre": { "type": "string" },
+        "receptorCedula": { "type": "string" },
         "fecha_entrega": { "type": "string", "format": "date" },
         "articulos": {
           "type": "array",
@@ -264,7 +265,9 @@
         },
         "fotos_entrega": { "type": "array", "items": { "type": "string", "format": "uri" } },
         "responsable": { "type": "string" },
+        "responsableCedula": { "type": "string" },
         "firmaReceptor": { "type": "string", "format": "uri" },
+        "firmaResponsable": { "type": "string", "format": "uri" },
         "huellaReceptor": { "type": "string", "format": "uri" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -310,6 +313,20 @@
       },
       "required": ["articuloId", "nombre", "cantidad", "unidad"]
     },
+    "Gasto": {
+      "title": "Gasto",
+      "description": "Representa una salida o gasto de fondos monetarios.",
+      "type": "object",
+      "properties": {
+        "fecha": { "type": "string", "format": "date-time" },
+        "monto": { "type": "number" },
+        "descripcion": { "type": "string" },
+        "categoria": { "type": "string" },
+        "responsable": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fecha", "monto", "descripcion", "responsable"]
+    },
     "Articulo": {
       "title": "Articulo",
       "description": "Representa un artículo maestro en el catálogo de inventario.",
@@ -342,6 +359,10 @@
       "schema": { "$ref": "#/entities/Donacion" },
       "description": "Colección de todas las donaciones recibidas."
     },
+    "/gastos/{gastoId}": {
+        "schema": { "$ref": "#/entities/Gasto" },
+        "description": "Colección de todos los gastos o salidas de dinero."
+    },
     "/entregas/{entregaId}": {
       "schema": { "$ref": "#/entities/Entrega" },
       "description": "Colección de todas las entregas de ayuda realizadas."
@@ -360,5 +381,3 @@
     }
   }
 }
-
-    

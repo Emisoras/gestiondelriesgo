@@ -23,6 +23,12 @@ export default function LandingPage() {
           <span className="text-lg font-bold font-headline">ResQ Hub</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
+            <Button asChild variant="ghost">
+              <Link href="/registro-voluntarios" className="flex items-center gap-2">
+                <HeartHandshake className="h-4 w-4" />
+                Conviértete en Voluntario
+              </Link>
+            </Button>
             <Link href="/login" className={cn(buttonVariants({ variant: "outline" }), "flex items-center gap-2")}>
               <LogIn className="h-4 w-4" />
               Iniciar Sesión
@@ -47,14 +53,6 @@ export default function LandingPage() {
               <p className="mt-4 text-muted-foreground md:text-xl">
                 ResQ Hub centraliza el registro de afectados, voluntarios y donaciones para una respuesta a desastres más eficiente y humana.
               </p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
-                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <Link href="/dashboard">Acceder al Dashboard</Link>
-                </Button>
-                 <Button asChild size="lg" variant="secondary">
-                  <Link href="/registro-voluntarios">Conviértete en Voluntario</Link>
-                </Button>
-              </div>
             </div>
           </div>
         </section>

@@ -17,7 +17,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users, Siren, Archive, Package } from "lucide-react";
+import { LayoutDashboard, ClipboardList, HeartHandshake, Box, Truck, Sparkles, User, LogOut, Loader2, LogIn, Users, Siren, Archive, Package, Landmark } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -77,6 +77,7 @@ export function SidebarNav() {
       ]
     },
     { href: "/dashboard/inventario", icon: Archive, label: "Inventario" },
+    { href: "/dashboard/finanzas", icon: Landmark, label: "Finanzas", adminOnly: true },
     { 
       href: "/dashboard/entregas", 
       icon: Truck, 
@@ -126,9 +127,13 @@ export function SidebarNav() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  const renderNavItems = (items: typeof navItems) => {
+  const renderNavItems = (items: any[]) => {
     return items.map((item) => {
-        const validSubItems = item.subItems?.filter(si => si.href);
+        if (item.adminOnly && userProfile?.role !== 'administrador') {
+            return null;
+        }
+
+        const validSubItems = item.subItems?.filter((si: any) => si.href);
         
         if (item.subItems && validSubItems && validSubItems.length === 0) {
             if (item.href === pathname) {
@@ -166,7 +171,7 @@ export function SidebarNav() {
             {validSubItems && validSubItems.length > 0 && open && (
             <Collapsible.Content>
                 <SidebarMenuSub>
-                    {validSubItems.map(subItem => (
+                    {validSubItems.map((subItem: any) => (
                         <SidebarMenuSubItem key={subItem.href}>
                             <Link href={subItem.href} passHref>
                                 <SidebarMenuSubButton asChild isActive={pathname === subItem.href}>

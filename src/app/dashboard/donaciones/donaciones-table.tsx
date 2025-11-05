@@ -96,7 +96,7 @@ export function DonacionesTable() {
             await deleteDonacion(selectedDonacion.id);
             toast({
               title: "Registro Eliminado",
-              description: "La donación ha sido eliminada correctamente. El inventario no se ha ajustado automáticamente.",
+              description: "La donación ha sido eliminada y el inventario ajustado.",
             });
             forceRefetch();
         } catch(error) {
@@ -117,7 +117,7 @@ export function DonacionesTable() {
             <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-green-600" />
                 <span className="font-semibold">
-                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(donacion.monto || 0)}
+                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(donacion.monto || 0)}
                 </span>
                 {donacion.descripcion_general && <span className="text-muted-foreground text-xs">({donacion.descripcion_general})</span>}
             </div>
@@ -234,7 +234,7 @@ export function DonacionesTable() {
                 <AlertDialogTitle>¿Estás seguro de que quieres eliminar este registro?</AlertDialogTitle>
                 <AlertDialogDescription>
                     Esta acción no se puede deshacer. Esto eliminará permanentemente la donación de
-                    {selectedDonacion && ` ${selectedDonacion.donante}`}. El inventario no se ajustará automáticamente.
+                    {selectedDonacion && ` ${selectedDonacion.donante}`} y devolverá los artículos al inventario.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -248,5 +248,3 @@ export function DonacionesTable() {
     </>
   );
 }
-
-    

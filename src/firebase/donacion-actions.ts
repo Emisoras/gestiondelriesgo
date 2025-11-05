@@ -1,7 +1,7 @@
 
 'use server';
 
-import { addDoc, collection, serverTimestamp, deleteDoc, doc, updateDoc, writeBatch, getDocs, query, where, increment } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, deleteDoc, doc, updateDoc, writeBatch, getDocs, query, where, increment, getDoc } from 'firebase/firestore';
 import { firestore } from '@/firebase/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -33,11 +33,11 @@ const getOrCreateArticulo = async (batch: any, articulo: any) => {
 };
 
 
-const updateInventory = async (batch: any, articulos: any[], operation: 'add' | 'subtract') => {
+export const updateInventory = async (batch: any, articulos: any[], operation: 'add' | 'subtract') => {
     const inventarioRef = collection(firestore, 'inventario');
     
     for (const articulo of articulos) {
-        const articuloId = await getOrCreateArticulo(batch, articulo);
+        const articuloId = articulo.articuloId || await getOrCreateArticulo(batch, articulo);
         if (!articuloId) {
              console.warn(`No se pudo obtener o crear el ID del artículo para: ${articulo.nombre}`);
              continue;
@@ -48,18 +48,14 @@ const updateInventory = async (batch: any, articulos: any[], operation: 'add' | 
         const cantidad = operation === 'add' ? articulo.cantidad : -articulo.cantidad;
 
         if (querySnapshot.empty) {
-            if (operation === 'add') {
-                const newDocRef = doc(inventarioRef); // Firestore generates the ID
-                batch.set(newDocRef, {
-                    articuloId: articuloId,
-                    nombre: articulo.nombre,
-                    unidad: articulo.unidad,
-                    cantidad: articulo.cantidad,
-                    lastUpdatedAt: serverTimestamp(),
-                });
-            } else {
-                console.warn(`Intento de restar del inventario un artículo no existente: ${articulo.nombre}`);
-            }
+            const newDocRef = doc(inventarioRef);
+            batch.set(newDocRef, {
+                articuloId: articuloId,
+                nombre: articulo.nombre,
+                unidad: articulo.unidad,
+                cantidad: cantidad, // Can be negative if subtracting from non-existent, which is okay for reconciliation
+                lastUpdatedAt: serverTimestamp(),
+            });
         } else {
             const docRef = querySnapshot.docs[0].ref;
             batch.update(docRef, {
@@ -127,13 +123,27 @@ export const updateDonacion = async (id: string, donacionData: any) => {
 };
 
 export const deleteDonacion = async (id: string) => {
-    // Note: This function doesn't automatically handle inventory changes
-    // for simplicity. A real-world scenario would require complex logic to
-    // decrement the inventory based on the deleted donation's items.
     const docRef = doc(firestore, 'donaciones', id);
+    const batch = writeBatch(firestore);
     try {
-        await deleteDoc(docRef);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+            throw new Error("La donación que intenta eliminar no existe.");
+        }
+        const donacion = docSnap.data();
+
+        // Subtract items from inventory
+        if (donacion.articulos && donacion.articulos.length > 0) {
+            await updateInventory(batch, donacion.articulos, 'subtract');
+        }
+        
+        // Delete the donation document
+        batch.delete(docRef);
+
+        await batch.commit();
+
     } catch (serverError: any) {
+        console.error("Error deleting donation:", serverError);
         const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'delete',

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -14,9 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Loader2 } from "lucide-react";
 import { useCollection } from "@/firebase";
+import type { Articulo } from "../admin/articulos/articulos-table";
 
 type InventarioItem = {
-  id: string;
+  id: string; // Document ID in inventario collection
+  articuloId: string; // Document ID from catalogoArticulos
   nombre: string;
   cantidad: number;
   unidad: string;
@@ -26,10 +28,30 @@ type InventarioItem = {
 };
 
 export function InventarioTable() {
-  const { data: inventario, loading } = useCollection<InventarioItem>('inventario', { orderBy: ['nombre', 'asc']});
+  const { data: catalogo, loading: loadingCatalogo } = useCollection<Articulo>('catalogoArticulos', { orderBy: ['nombre', 'asc'] });
+  const { data: inventario, loading: loadingInventario } = useCollection<InventarioItem>('inventario');
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredInventario = inventario?.filter(
+  const loading = loadingCatalogo || loadingInventario;
+
+  const combinedInventario = useMemo(() => {
+    if (!catalogo) return [];
+    
+    const inventarioMap = new Map(inventario?.map(item => [item.articuloId, item]));
+    
+    return catalogo.map(articulo => {
+      const inventarioItem = inventarioMap.get(articulo.id);
+      return {
+        id: articulo.id, // Use catalogo id as the key
+        nombre: articulo.nombre,
+        unidad: articulo.unidad,
+        cantidad: inventarioItem?.cantidad ?? 0,
+      };
+    });
+  }, [catalogo, inventario]);
+
+
+  const filteredInventario = combinedInventario?.filter(
     (item) =>
       item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.unidad.toLowerCase().includes(searchTerm.toLowerCase())
@@ -87,7 +109,7 @@ export function InventarioTable() {
             ) : (
               <TableRow>
                 <TableCell colSpan={3} className="h-24 text-center">
-                  No hay artículos en el inventario.
+                   {catalogo && catalogo.length > 0 ? "No se encontraron artículos con ese criterio." : "No hay artículos en el catálogo. Agregue algunos para ver el inventario."}
                 </TableCell>
               </TableRow>
             )}
@@ -97,5 +119,3 @@ export function InventarioTable() {
     </div>
   );
 }
-
-    
