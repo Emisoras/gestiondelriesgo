@@ -40,7 +40,7 @@ import type { VisitaTecnica } from "./visita-form";
 
 
 export function VisitasTable() {
-  const { data: visitas, loading, forceRefetch } = useCollection<VisitaTecnica>('visitas', { orderBy: ['fechaVisita', 'desc']});
+  const { data: visitas, loading, forceRefetch } = useCollection<VisitaTecnica>('visitas', { orderBy: ['createdAt', 'desc']});
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedVisita, setSelectedVisita] = useState<VisitaTecnica | null>(null);
   const { toast } = useToast();

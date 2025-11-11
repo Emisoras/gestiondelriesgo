@@ -296,9 +296,10 @@
         "profesionalAsignado": { "type": "string" },
         "fechaVisita": { "type": "string", "format": "date-time" },
         "registroFotografico": { "type": "array", "items": { "type": "string", "format": "uri" } },
-        "firmaProfesional": { "type": "string", "format": "uri" }
+        "firmaProfesional": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["actaNumero", "damnificadoId", "profesionalAsignado", "fechaVisita", "tipoEvento", "descripcionRequerimiento"]
+      "required": ["damnificadoId", "profesionalAsignado", "fechaVisita", "tipoEvento", "descripcionRequerimiento"]
     },
      "Inventario": {
       "title": "Inventario",
@@ -333,10 +334,11 @@
       "type": "object",
       "properties": {
         "nombre": { "type": "string", "description": "Nombre único del artículo." },
+        "nombre_normalizado": { "type": "string", "description": "Nombre en minúsculas para búsquedas." },
         "categoria": { "type": "string", "description": "Categoría del artículo (ej: Alimentos, Ropa, Medicamentos)." },
         "unidad": { "type": "string", "description": "Unidad de medida estándar (ej: kg, und, lts)." }
       },
-      "required": ["nombre", "categoria", "unidad"]
+      "required": ["nombre", "nombre_normalizado", "categoria", "unidad"]
     }
   },
   "auth": {

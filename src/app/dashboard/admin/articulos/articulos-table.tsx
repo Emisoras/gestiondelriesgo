@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -26,7 +26,9 @@ export type Articulo = {
     nombre: string;
     categoria: string;
     unidad: string;
+    nombre_normalizado?: string;
 };
+
 
 export function ArticulosTable() {
   const { data: articulos, loading, forceRefetch } = useCollection<Articulo>('catalogoArticulos', { orderBy: ['nombre', 'asc'] });

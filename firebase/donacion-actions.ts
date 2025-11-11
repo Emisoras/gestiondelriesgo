@@ -6,60 +6,90 @@ import { firestore } from '@/firebase/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
+/**
+ * Finds an existing article by its normalized name or creates a new one if it doesn't exist.
+ * This function is robust against case-insensitive duplicates.
+ * @param batch - The Firestore write batch to add operations to.
+ * @param articulo - The article data from the form { nombre, unidad, cantidad }.
+ * @returns The canonical article data object from the catalog, including its ID.
+ */
 const getOrCreateArticulo = async (batch: any, articulo: any) => {
-    if (articulo.articuloId) {
-        return articulo.articuloId;
-    }
-
-    // Check if an article with the same name already exists
     const catalogoRef = collection(firestore, 'catalogoArticulos');
-    const q = query(catalogoRef, where("nombre", "==", articulo.nombre));
+    const nombreNormalizado = articulo.nombre.trim().toLowerCase();
+
+    if (!nombreNormalizado) {
+        throw new Error("El nombre del artículo no puede estar vacío.");
+    }
+    
+    // Always search by normalized name to prevent duplicates.
+    const q = query(catalogoRef, where("nombre_normalizado", "==", nombreNormalizado));
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
-        // Article exists, return its ID
-        return querySnapshot.docs[0].id;
-    } else {
-        // Article does not exist, create it
-        const newArticuloRef = doc(catalogoRef);
-        batch.set(newArticuloRef, {
-            nombre: articulo.nombre,
-            unidad: articulo.unidad || 'und', // Default to 'und' if not provided
-            categoria: 'General', // Default category
-            createdAt: serverTimestamp(),
-        });
-        return newArticuloRef.id;
-    }
+        // If found, return the data of the existing article.
+        const existingDoc = querySnapshot.docs[0];
+        return { id: existingDoc.id, ...existingDoc.data() };
+    } 
+    
+    // If we are here, it means no article with that normalized name exists.
+    // We can now safely create a new one.
+    const newArticuloData = {
+        nombre: articulo.nombre.trim(),
+        nombre_normalizado: nombreNormalizado,
+        unidad: articulo.unidad || 'und', // Default to 'und' if not provided
+        categoria: 'General', // Default category for auto-created items
+        createdAt: serverTimestamp(),
+    };
+    const newArticuloRef = doc(catalogoRef);
+    batch.set(newArticuloRef, newArticuloData);
+    
+    // Return a representation of the new document for immediate use.
+    return { id: newArticuloRef.id, ...newArticuloData };
 };
 
 
+/**
+ * Updates the inventory for a list of articles, either adding or subtracting quantities.
+ * @param batch - The Firestore write batch.
+ * @param articulos - An array of article objects, each with articuloId, nombre, unidad, and cantidad.
+ * @param operation - 'add' to increase stock, 'subtract' to decrease stock.
+ */
 export const updateInventory = async (batch: any, articulos: any[], operation: 'add' | 'subtract') => {
     const inventarioRef = collection(firestore, 'inventario');
     
     for (const articulo of articulos) {
-        const articuloId = articulo.articuloId || await getOrCreateArticulo(batch, articulo);
-        if (!articuloId) {
-             console.warn(`No se pudo obtener o crear el ID del artículo para: ${articulo.nombre}`);
-             continue;
-        }
+        const { articuloId, nombre, unidad, cantidad } = articulo;
+        if (!articuloId) continue; 
 
         const q = query(inventarioRef, where("articuloId", "==", articuloId));
         const querySnapshot = await getDocs(q);
-        const cantidad = operation === 'add' ? articulo.cantidad : -articulo.cantidad;
+        
+        const amountToChange = operation === 'add' ? cantidad : -cantidad;
 
         if (querySnapshot.empty) {
+             if (operation === 'subtract') {
+                throw new Error(`Intentando restar stock para "${nombre}" que no existe en el inventario.`);
+            }
+            // Create new inventory item if it doesn't exist
             const newDocRef = doc(inventarioRef);
             batch.set(newDocRef, {
-                articuloId: articuloId,
-                nombre: articulo.nombre,
-                unidad: articulo.unidad,
-                cantidad: cantidad, // Can be negative if subtracting from non-existent, which is okay for reconciliation
+                articuloId,
+                nombre,
+                unidad,
+                cantidad: Math.max(0, amountToChange),
                 lastUpdatedAt: serverTimestamp(),
             });
         } else {
-            const docRef = querySnapshot.docs[0].ref;
-            batch.update(docRef, {
-                cantidad: increment(cantidad),
+            // Update existing inventory item
+            const inventarioDocRef = querySnapshot.docs[0].ref;
+            const currentStock = querySnapshot.docs[0].data()?.cantidad ?? 0;
+            
+            if (operation === 'subtract' && currentStock < cantidad) {
+                throw new Error(`Stock insuficiente para "${nombre}". Stock actual: ${currentStock}, se necesitan: ${cantidad}`);
+            }
+            
+            batch.update(inventarioDocRef, {
+                cantidad: increment(amountToChange),
                 lastUpdatedAt: serverTimestamp(),
             });
         }
@@ -75,20 +105,28 @@ export const addDonacion = async (donacionData: any) => {
         const newDonacionRef = doc(collectionRef);
         
         if (donacionData.articulos && donacionData.articulos.length > 0) {
-            await updateInventory(batch, donacionData.articulos, 'add');
-        }
+            const finalArticulos = [];
+            for (const art of donacionData.articulos) {
+                // This function now robustly handles finding or creating the article.
+                const catalogoArticulo = await getOrCreateArticulo(batch, art);
+                
+                finalArticulos.push({
+                    articuloId: catalogoArticulo.id,
+                    nombre: catalogoArticulo.nombre, // Use canonical name from catalog
+                    unidad: catalogoArticulo.unidad, // Use canonical unit from catalog
+                    cantidad: art.cantidad,
+                });
+            }
 
-        // Must update the payload AFTER getOrCreateArticulo has run
-        const finalArticulos = await Promise.all(
-            (donacionData.articulos || []).map(async (art: any) => ({
-                ...art,
-                articuloId: art.articuloId || await getOrCreateArticulo(batch, art),
-            }))
-        );
+            // Update inventory with the canonical data
+            await updateInventory(batch, finalArticulos, 'add');
+            
+            // Save the canonical article data in the donation document itself
+            donacionData.articulos = finalArticulos;
+        }
         
         batch.set(newDonacionRef, {
             ...donacionData,
-            articulos: finalArticulos,
             createdAt: serverTimestamp(),
         });
         
@@ -132,9 +170,10 @@ export const deleteDonacion = async (id: string) => {
         }
         const donacion = docSnap.data();
 
-        // Subtract items from inventory
+        // When deleting a donation, the items are "returned" to inventory.
+        // We must ADD them back to inventory to reverse the donation.
         if (donacion.articulos && donacion.articulos.length > 0) {
-            await updateInventory(batch, donacion.articulos, 'subtract');
+            await updateInventory(batch, donacion.articulos, 'add');
         }
         
         // Delete the donation document

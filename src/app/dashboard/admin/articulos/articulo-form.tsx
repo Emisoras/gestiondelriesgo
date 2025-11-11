@@ -54,6 +54,7 @@ export function ArticuloForm({ articuloId, initialValues }: ArticuloFormProps) {
   
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
+    form.clearErrors();
     try {
         if (articuloId) {
             await updateArticulo(articuloId, values);
@@ -64,11 +65,15 @@ export function ArticuloForm({ articuloId, initialValues }: ArticuloFormProps) {
         }
         router.push("/dashboard/admin/articulos");
     } catch (error: any) {
-        toast({
-            title: "Error al guardar",
-            description: error.message || "No se pudo guardar el artículo.",
-            variant: "destructive",
-        });
+        if (error.message.includes("ya existe")) {
+            form.setError("nombre", { type: "manual", message: error.message });
+        } else {
+            toast({
+                title: "Error al guardar",
+                description: error.message || "No se pudo guardar el artículo.",
+                variant: "destructive",
+            });
+        }
     } finally {
         setIsSubmitting(false);
     }

@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useEffect, useState, useMemo } from "react";
 import { Camera, Loader2, Trash2, PenSquare, CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { useCollection, useUser } from "@/firebase";
-import { addVisita, updateVisita } from "@/firebase/visita-actions";
+import { addVisita, updateVisita, getNextActaNumber } from "@/firebase/visita-actions";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { SignaturePad } from "@/app/dashboard/entregas/signature-pad";
@@ -65,7 +65,7 @@ const eventItems = [
 ] as const;
 
 const formSchema = z.object({
-    actaNumero: z.string(),
+    actaNumero: z.string().optional(),
     damnificadoId: z.string({ required_error: "Debe seleccionar un damnificado." }),
     nombreDamnificado: z.string().min(1, "El nombre es requerido."),
     apellidoDamnificado: z.string().min(1, "El apellido es requerido."),
@@ -114,13 +114,6 @@ type VisitaFormProps = {
     initialValues?: Partial<VisitaTecnica>;
 };
 
-const generateActaNumero = () => {
-    const now = new Date();
-    const prefix = format(now, 'yyyyMMddHHmm');
-    const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `VT-${prefix}-${suffix}`;
-}
-
 export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
     const { toast } = useToast();
     const router = useRouter();
@@ -129,28 +122,42 @@ export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [existingImages, setExistingImages] = useState<string[]>(initialValues?.registroFotografico || []);
-    const [actaNumero, setActaNumero] = useState(initialValues?.actaNumero || "");
+    const [nextActa, setNextActa] = useState<string | null>(visitaId ? initialValues?.actaNumero || null : null);
+    const [loadingActa, setLoadingActa] = useState(!visitaId);
     
-    const parsedInitialValues = useMemo(() => {
-        if (!initialValues) {
-            return {
-                actaNumero: "",
-                damnificadoId: "",
-                nombreDamnificado: "",
-                apellidoDamnificado: "",
-                cedulaDamnificado: "",
-                telefonoDamnificado: "",
-                direccion: "",
-                barrio: "",
-                condicionVivienda: "",
-                tipoEvento: [],
-                descripcionRequerimiento: "",
-                profesionalAsignado: userProfile?.displayName || "",
-                fechaVisita: undefined, // Set to undefined to avoid hydration mismatch
-                registroFotografico: [],
-                firmaProfesional: "",
-            };
+    useEffect(() => {
+        if (!visitaId) {
+            setLoadingActa(true);
+            getNextActaNumber()
+                .then(setNextActa)
+                .catch(() => toast({ title: "Error", description: "No se pudo obtener el número de acta.", variant: "destructive" }))
+                .finally(() => setLoadingActa(false));
         }
+    }, [visitaId, toast]);
+
+    const parsedInitialValues = useMemo(() => {
+        const defaults = {
+            actaNumero: initialValues?.actaNumero || "",
+            damnificadoId: "",
+            nombreDamnificado: "",
+            apellidoDamnificado: "",
+            cedulaDamnificado: "",
+            telefonoDamnificado: "",
+            direccion: "",
+            barrio: "",
+            condicionVivienda: "",
+            tipoEvento: [],
+            descripcionRequerimiento: "",
+            profesionalAsignado: userProfile?.displayName || "",
+            fechaVisita: new Date(), 
+            registroFotografico: [],
+            firmaProfesional: "",
+        };
+
+        if (!initialValues) {
+            return defaults;
+        }
+
         const parsed = { ...initialValues };
         if (parsed.fechaVisita && (parsed.fechaVisita as any).seconds) {
             parsed.fechaVisita = new Date((parsed.fechaVisita as any).seconds * 1000);
@@ -158,7 +165,7 @@ export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
              parsed.fechaVisita = new Date(parsed.fechaVisita);
         }
 
-        return parsed as VisitaTecnica;
+        return { ...defaults, ...parsed };
     }, [initialValues, userProfile]);
 
 
@@ -168,21 +175,9 @@ export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
     });
     
     useEffect(() => {
-        if (!visitaId) {
-            const newActaNumero = generateActaNumero();
-            setActaNumero(newActaNumero);
-            form.setValue("actaNumero", newActaNumero);
-            form.setValue("fechaVisita", new Date());
-        }
-    }, [visitaId, form]);
-
-    useEffect(() => {
         form.reset(parsedInitialValues);
-        if(initialValues?.actaNumero){
-            setActaNumero(initialValues.actaNumero);
-        }
         setExistingImages(parsedInitialValues.registroFotografico || []);
-    }, [parsedInitialValues, form, initialValues]);
+    }, [parsedInitialValues, form]);
 
     const damnificadoId = form.watch("damnificadoId");
     
@@ -223,36 +218,47 @@ export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
                 const base64Images = await Promise.all(base64Promises);
                 uploadedImageUrls.push(...base64Images);
             }
+            
+            const finalActaNumero = visitaId ? values.actaNumero : nextActa;
+            if (!finalActaNumero) {
+                throw new Error("El número de acta no está disponible.");
+            }
 
-            const dataPayload: VisitaTecnica = {
+            const dataPayload: Omit<VisitaTecnica, 'actaNumero'> & { actaNumero?: string } = {
                 ...values,
+                actaNumero: finalActaNumero,
                 registroFotografico: uploadedImageUrls,
                 profesionalAsignado: userProfile.displayName || "No identificado",
             };
-            delete (dataPayload as any).new_fotos;
+            delete dataPayload.new_fotos;
             
             if (visitaId) {
                 await updateVisita(visitaId, dataPayload);
                 toast({ title: "Actualización Exitosa", description: "El acta de visita ha sido actualizada." });
-                await exportVisitaToPDF(dataPayload, userProfile);
+                const finalData = { ...dataPayload, id: visitaId, actaNumero: dataPayload.actaNumero || ''};
+                await exportVisitaToPDF(finalData, userProfile);
                 router.push('/dashboard/visitas/listado');
             } else {
-                const newVisitaId = await addVisita(dataPayload);
-                toast({ title: "Registro Exitoso", description: "El acta de visita ha sido guardada." });
-                await exportVisitaToPDF({ ...dataPayload, id: newVisitaId }, userProfile);
+                const { id: newVisitaId } = await addVisita(dataPayload);
+                toast({ title: "Registro Exitoso", description: `El acta ${finalActaNumero} ha sido guardada.` });
                 
-                // Reset form for new entry
-                const newActa = generateActaNumero();
+                const finalData = { ...dataPayload, id: newVisitaId, actaNumero: finalActaNumero };
+                await exportVisitaToPDF(finalData, userProfile);
+                
+                // Reset form and refetch acta number for new entry
                 form.reset({
                     ...parsedInitialValues,
-                     actaNumero: newActa,
-                     fechaVisita: new Date(),
+                    damnificadoId: "", nombreDamnificado: "", apellidoDamnificado: "", cedulaDamnificado: "",
+                    telefonoDamnificado: "", direccion: "", barrio: "", condicionVivienda: "", tipoEvento: [],
+                    descripcionRequerimiento: "", registroFotografico: [], new_fotos: undefined, firmaProfesional: "",
+                    otro_tipo_evento: "", profesionalAsignado: userProfile?.displayName || "", fechaVisita: new Date(),
                 });
-                setActaNumero(newActa);
                 setExistingImages([]);
+                setLoadingActa(true);
+                getNextActaNumber().then(setNextActa).finally(() => setLoadingActa(false));
             }
-        } catch(error) {
-            toast({ title: "Error", description: "No se pudo registrar la visita. Verifique sus permisos.", variant: "destructive" });
+        } catch(error: any) {
+            toast({ title: "Error", description: error.message || "No se pudo registrar la visita. Verifique sus permisos.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -264,7 +270,9 @@ export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
         
         <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
             <h3 className="font-bold text-lg">Número de Acta</h3>
-            <span className="font-mono text-primary font-semibold">{actaNumero}</span>
+            <span className="font-mono text-primary font-semibold">
+                {loadingActa ? <Loader2 className="h-4 w-4 animate-spin" /> : (nextActa || "No disponible")}
+            </span>
         </div>
 
         <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4"]} className="w-full">
@@ -448,9 +456,9 @@ export function VisitaForm({ visitaId, initialValues }: VisitaFormProps) {
           </AccordionItem>
         </Accordion>
 
-        <Button type="submit" size="lg" disabled={isSubmitting} className="w-full bg-primary hover:bg-primary/90">
+        <Button type="submit" size="lg" disabled={isSubmitting || loadingActa} className="w-full bg-primary hover:bg-primary/90">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? (visitaId ? "Actualizando..." : "Guardando y Generando PDF...") : (visitaId ? "Actualizar Acta" : "Guardar y Generar PDF")}
+            {isSubmitting ? (visitaId ? "Actualizando..." : "Guardando y Generando PDF...") : (visitaId ? "Actualizar y Generar PDF" : "Guardar y Generar PDF")}
         </Button>
       </form>
     </Form>

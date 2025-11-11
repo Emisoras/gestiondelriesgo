@@ -46,7 +46,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 const articuloSchema = z.object({
-  articuloId: z.string().optional(), // Optional because it might not exist yet
+  articuloId: z.string().optional(), // Is optional because the final ID is determined by the server.
   nombre: z.string().min(1, "El nombre es requerido."),
   cantidad: z.coerce.number().positive("La cantidad debe ser mayor a 0."),
   unidad: z.string().min(1, "La unidad es requerida."),
@@ -182,7 +182,7 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
             setExistingImages([]);
         }
     } catch (error) {
-        toast({ title: "Error", description: "No se pudo guardar la donación. Verifique sus permisos.", variant: "destructive" });
+        toast({ title: "Error", description: (error as Error).message || "No se pudo guardar la donación.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
@@ -365,9 +365,8 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
                                                       {...field}
                                                       onChange={(e) => {
                                                         field.onChange(e.target.value);
-                                                        const currentArticulos = form.getValues('articulos') || [];
-                                                        currentArticulos[index] = { ...currentArticulos[index], articuloId: undefined, unidad: ''};
-                                                        form.setValue('articulos', currentArticulos);
+                                                        // When user types, clear the articuloId to force a name-based lookup on the server
+                                                        form.setValue(`articulos.${index}.articuloId`, undefined);
                                                       }}
                                                     />
                                                 </div>
@@ -384,17 +383,13 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
                                                             value={item.nombre}
                                                             key={item.id}
                                                             onSelect={() => {
-                                                                const currentArticulos = form.getValues('articulos') || [];
-                                                                currentArticulos[index] = {
-                                                                    articuloId: item.id,
-                                                                    nombre: item.nombre,
-                                                                    unidad: item.unidad,
-                                                                    cantidad: currentArticulos[index].cantidad || 1,
-                                                                };
-                                                                form.setValue('articulos', currentArticulos);
+                                                                form.setValue(`articulos.${index}.nombre`, item.nombre);
+                                                                form.setValue(`articulos.${index}.unidad`, item.unidad);
+                                                                // Set the ID here for reference, but the server will make the final call
+                                                                form.setValue(`articulos.${index}.articuloId`, item.id);
                                                             }}
                                                             >
-                                                            <Check className={cn("mr-2 h-4 w-4", item.id === form.getValues(`articulos.${index}.articuloId`) ? "opacity-100" : "opacity-0")}/>
+                                                            <Check className={cn("mr-2 h-4 w-4", item.nombre === form.getValues(`articulos.${index}.nombre`) ? "opacity-100" : "opacity-0")}/>
                                                             {item.nombre}
                                                             </CommandItem>
                                                         ))}
@@ -423,7 +418,7 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
                                 name={`articulos.${index}.unidad`}
                                 render={({ field }) => (
                                     <FormItem className="w-32">
-                                        <FormControl><Input placeholder="und, kg, lts..." {...field} disabled={!!form.watch(`articulos.${index}.articuloId`)}/></FormControl>
+                                        <FormControl><Input placeholder="und, kg, lts..." {...field} disabled={!!catalogo?.find(c => c.nombre.toLowerCase() === form.watch(`articulos.${index}.nombre`).toLowerCase())} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -509,5 +504,3 @@ export function DonacionForm({ donacionId, initialValues }: DonacionFormProps) {
     </Form>
   );
 }
-
-    

@@ -36,13 +36,15 @@ export function InventarioTable() {
 
   const combinedInventario = useMemo(() => {
     if (!catalogo) return [];
-    
-    const inventarioMap = new Map(inventario?.map(item => [item.articuloId, item]));
-    
+
+    // Create a map of inventory items by their articuloId for quick lookup.
+    const inventarioMap = new Map(inventario?.map(item => [item.articuloId, item]) || []);
+
+    // Map over the catalog and enrich it with inventory data.
     return catalogo.map(articulo => {
       const inventarioItem = inventarioMap.get(articulo.id);
       return {
-        id: articulo.id, // Use catalogo id as the key
+        id: articulo.id,
         nombre: articulo.nombre,
         unidad: articulo.unidad,
         cantidad: inventarioItem?.cantidad ?? 0,
@@ -53,8 +55,10 @@ export function InventarioTable() {
 
   const filteredInventario = combinedInventario?.filter(
     (item) =>
-      item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.unidad.toLowerCase().includes(searchTerm.toLowerCase())
+      item && (
+        item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.unidad.toLowerCase().includes(searchTerm.toLowerCase())
+      )
   );
   
   const getStockVariant = (cantidad: number) => {
@@ -96,7 +100,7 @@ export function InventarioTable() {
               </TableRow>
             ) : filteredInventario && filteredInventario.length > 0 ? (
               filteredInventario.map((item) => (
-                <TableRow key={item.id}>
+                item && <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.nombre}</TableCell>
                   <TableCell className="text-right">
                      <Badge variant={getStockVariant(item.cantidad)} className="text-lg">
